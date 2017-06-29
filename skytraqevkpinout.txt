@@ -1,0 +1,4 @@
+RXD0 - Pin 16
+TXD0 - Pin 18
+VCC33I - Pin 2
+GND - Pin 8
