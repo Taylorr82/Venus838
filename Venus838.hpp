@@ -8,6 +8,8 @@
 
 #include "Arduino.h"
 
+#define GPS_DEBUG_BAUDRATE 115200
+
 // NMEA strings enum definitions
 #define GGA 0
 #define GSA 1
@@ -26,47 +28,43 @@
 
 #define TIMEOUTMS 1000 //default wait time for how long the sender should wait for ack
 
-#define DEFAULTBAUDRATE 9600
+#define DEFAULTBAUDRATE 9600 //default baud rate of GPS receiver (should be 9600)
 
 class Venus838
 {
 public:
 
-    Venus838(HardwareSerial &serial, int baudrate); //pass hardwareserial port by reference
+    Venus838(HardwareSerial &serial, int baudrate, bool reset); //pass hardwareserial port by reference
 
+    // Receiver configuration/command methods
     char setBaudRate(int baudrate, char attribute);
-
     char setUpdateRate(int frequency, char attribute);
-
-    char reset(bool reboot);
-
-    // enable/disable a single NMEA string
+    char resetReceiver(bool reboot);
+    char querySoftwareVersion();
     char cfgNMEA(char messagename, bool enable, char attribute);
-
-    // enable/disable all NMEA strings based on a single byte
-    // bit 0: GGA, 1: GSA, 2: GSV, 3: GLL, 4: RMC, 5: VTG, 6: ZDA
     char cfgNMEA(char nmeabyte, char attribute);
-
-    // enter/exit power-saving mode
     char cfgPowerSave(bool enable, char attribute);
-
-    // configure behavior of the pulse-per-second pin
     char cfgPPS(char mode, char attribute);
 
+    //Serial wrapper methods
     bool available();
-
     char read();
 
 private:
 
-    char _sendCommand(char messageid, char* messagebody, int bodylen); //uses default timeout specified by TIMEOUTMS
-    char _sendCommand(char messageid, char* messagebody, int bodylen, uint timemout);
     const int _baudrates[6] = {4800, 9600, 19200, 38400, 57600, 115200};
     char _nmeastate; //stores current configuration of which NMEA strings are enabled
     HardwareSerial _serial;
 
+    int _getBaudRate(HardwareSerial &serial);
+    char _sendCommand(char messageid, char* messagebody, int bodylen); //uses default timeout specified by TIMEOUTMS
+    char _sendCommand(char messageid, char* messagebody, int bodylen, uint timemout);
+    char _sendPacket(char* packet, int size, uint timeout);
+
     // debug
-    void _printpacket(char* packet, int size);
+    void _printPacket(char* packet, int size);
+    void _debug(const char* message);
+    void _debug(int number);
 };
 
 #endif

@@ -1,0 +1,4 @@
+hdop, vdop, pdop (GSA string)
+time until lock (ttff) procedure
+
+refactor code to change variable names

@@ -5,19 +5,17 @@
 #include <Venus838.hpp>
 
 //TinyGPS gps;
-Venus838 gps(Serial1, 115200);
+Venus838 gps(Serial1, 115200, true);
 
 String errorcodes[5] = {"NORMAL", "NACK", "TIMEOUT", "INVALIDARG", "UNKNOWN"};
 
 void setup()
 {
-    Serial.begin(115200);
-
-    while (!gps.dataAvailable());
-    Serial.println(errorcodes[(int)gps.reset(true)]);
-    delay(100);
-    while (!gps.dataAvailable());
-    Serial.println(errorcodes[(int)gps.setBaudRate(9600, 0)]);
+    while (!gps.available());
+    Serial.println(errorcodes[(int)gps.resetReceiver(true)]);
+    //delay(1000);
+    while (!gps.available());
+    Serial.println(errorcodes[(int)gps.setBaudRate(19200, 1)]);
     Serial.println("exiting setup");
     for (long start = millis(); millis() - start < 2000;)
     {

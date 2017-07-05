@@ -6,8 +6,18 @@
 #include "Arduino.h"
 #include "Venus838.hpp"
 
-Venus838::Venus838(HardwareSerial &serial, int baudrate)
+// Receiver startup sequence:
+// 1. match baudrate of receiver
+// 2. perform reset and match default baudrate of receiver (if requested)
+// 3. change baudrate of receiver
+// 4. match new baudrate of receiver
+Venus838::Venus838(HardwareSerial &serial, int baudrate, bool reset)
 {
+    #ifdef GPS_DEBUG_BAUDRATE
+    Serial.begin(GPS_DEBUG_BAUDRATE);
+    Serial.println("Debuggging initialized");
+    #endif
+
     _serial = serial;
     if (baudrate == DEFAULTBAUDRATE)
     {
@@ -15,11 +25,12 @@ Venus838::Venus838(HardwareSerial &serial, int baudrate)
     }
     else
     {
-        // will add code to test each baud rate to autodetect
-        // current configuration, for now just assume receiver
-        // is configured with the default
-        _serial.begin(DEFAULTBAUDRATE);
-        reset(true);
+        int currentbaudrate = _getBaudRate(_serial);
+        _serial.begin(currentbaudrate);
+        if (reset)
+        {
+            resetReceiver(true);
+        }
         setBaudRate(baudrate, 0);
     }
     _nmeastate = 0b1111111; //enable all nmea messages;
@@ -30,6 +41,7 @@ Venus838::Venus838(HardwareSerial &serial, int baudrate)
 // 1 = update RAM and flash
 char Venus838::setBaudRate(int baudrate, char attribute)
 {
+    _debug("Setting baud rate\n");
     char messagebody[3];
     memset(messagebody, 0, 3);
     messagebody[0] = 0x00; //COM port 1
@@ -62,6 +74,7 @@ char Venus838::setBaudRate(int baudrate, char attribute)
 // 1 = update RAM and flash
 char Venus838::setUpdateRate(int frequency, char attribute)
 {
+    _debug("Setting update rate\n");
     char messagebody[2];
     memset(messagebody, 0, 2);
     messagebody[0] = frequency;
@@ -69,12 +82,29 @@ char Venus838::setUpdateRate(int frequency, char attribute)
     return _sendCommand(0x0E, messagebody, 2);
 }
 
-char Venus838::reset(bool reboot)
+char Venus838::querySoftwareVersion()
 {
+    _debug("Querying software version\n");
+    char messagebody[1];
+    memset(messagebody, 0, 1);
+    messagebody[0] = 1;
+    return _sendCommand(0x02, messagebody, 1);
+}
+
+char Venus838::resetReceiver(bool reboot)
+{
+    _debug("Resetting receiver\n");
     char messagebody[1];
     memset(messagebody, 0, 1);
     messagebody[0] = reboot ? 1 : 0;
-    return _sendCommand(0x04, messagebody, 1, 10000);
+    char code = _sendCommand(0x04, messagebody, 1, 10000);
+    if (code == NORMAL)
+    {
+        delay(500);
+        _serial.end();
+        _serial.begin(DEFAULTBAUDRATE);
+    }
+    return code;
 }
 
 // Attribute:
@@ -82,6 +112,7 @@ char Venus838::reset(bool reboot)
 // 1 = update RAM and flash
 char Venus838::cfgNMEA(char messagename, bool enable, char attribute)
 {
+    _debug("Configuring a NMEA string\n");
     if (enable)
         _nmeastate |= 1 << messagename;
     else
@@ -95,6 +126,7 @@ char Venus838::cfgNMEA(char messagename, bool enable, char attribute)
 // 2 = temporarily enabled
 char Venus838::cfgPowerSave(bool enable, char attribute)
 {
+    _debug("Configuring Power Save mode\n");
     char messagebody[2];
     memset(messagebody, 0, 2);
     messagebody[0] = enable ? 1 : 0;
@@ -108,6 +140,7 @@ char Venus838::cfgPowerSave(bool enable, char attribute)
 // 2 = on when at least 1 SV
 char Venus838::cfgPPS(char mode, char attribute)
 {
+    _debug("Configuring 1PPS output\n");
     char messagebody[2];
     memset(messagebody, 0, 2);
     messagebody[0] = mode;
@@ -120,6 +153,7 @@ char Venus838::cfgPPS(char mode, char attribute)
 // 1 = update RAM and flash
 char Venus838::cfgNMEA(char nmeabyte, char attribute)
 {
+    _debug("Configuring all NMEA strings\n");
     char messagebody[8];
     memset(messagebody, 0, 8);
     messagebody[0] = (nmeabyte >> GGA) & 1;
@@ -143,6 +177,38 @@ char Venus838::read()
     return _serial.read();
 }
 
+int Venus838::_getBaudRate(HardwareSerial &serial)
+{
+    _debug("Autodetecting baud rate\n");
+
+    uint i = 0;
+    bool baudratefound = false;
+    while (!baudratefound)
+    {
+        _serial.begin(_baudrates[i]);
+
+        _debug("trying baudrate ");
+        _debug(_baudrates[i]);
+
+        char response = querySoftwareVersion();
+
+        if (response == NORMAL)
+        {
+            baudratefound = true;
+        }
+        else if (i < sizeof(_baudrates) - 1)
+        {
+            i++;
+        }
+        else
+        {
+            i = 0;
+        }
+        _serial.end();
+    }
+    return _baudrates[i];
+}
+
 char Venus838::_sendCommand(char messageid, char* messagebody, int bodylen)
 {
     return _sendCommand(messageid, messagebody, bodylen, TIMEOUTMS);
@@ -150,6 +216,7 @@ char Venus838::_sendCommand(char messageid, char* messagebody, int bodylen)
 
 char Venus838::_sendCommand(char messageid, char* messagebody, int bodylen, uint timeout)
 {
+    _debug("sending command\n");
     // Assemble Packet
     int packetlength = 8 + bodylen;
     char packet[packetlength];
@@ -176,10 +243,28 @@ char Venus838::_sendCommand(char messageid, char* messagebody, int bodylen, uint
     packet[packetlength - 1] = 0x0A;
 
     // Send Packet
+    _printPacket(packet, packetlength);
+
+    char code = _sendPacket(packet, packetlength, timeout / 2);
+    _debug("response code ");
+    _debug(code);
+
+    if (code != NORMAL)
+    {
+        _debug("failed, trying again\n");
+        code = _sendPacket(packet, packetlength, timeout / 2);
+        _debug("response code ");
+        _debug(code);
+    }
+    return code;
+}
+
+char Venus838::_sendPacket(char* packet, int size, uint timeout)
+{
     char c = 0;
     char last = 0;
     bool response = false;
-    _serial.write(packet, packetlength);
+    _serial.write(packet, size);
     // wait for repsonse
     for(uint start = millis(); millis() - start < timeout;)
     {
@@ -190,14 +275,14 @@ char Venus838::_sendCommand(char messageid, char* messagebody, int bodylen, uint
                 response = true;
             if (response and last == 0x83)
             {
-                if (c == messageid)
+                if (c == packet[4]) //packet[4] = messageid
                     return NORMAL;
                 else
                     return UNKNOWN;
             }
             else if (response and last == 0x84)
             {
-                if (c == messageid)
+                if (c == packet[4]) //packet[4] = messageid
                     return NACK;
                 else
                     return UNKNOWN;
@@ -208,13 +293,31 @@ char Venus838::_sendCommand(char messageid, char* messagebody, int bodylen, uint
     return TIMEOUT;
 }
 
-void Venus838::_printpacket(char* packet, int size)
+void Venus838::_printPacket(char* packet, int size)
 {
-    Serial.print("Assembled Packet: ");
+    #ifdef GPS_DEBUG_BAUDRATE
+    Serial.print("assembled Packet: {");
     for (int i = 0; i < size; i++)
     {
-        Serial.print(packet[i], 16);
-        Serial.print(" ");
+        char hexval[4];
+        sprintf(hexval, "0x%02X", packet[i]);
+        Serial.print(hexval);
+        if (i < size - 1) {Serial.print(", ");}
     }
-    Serial.println("");
+    Serial.println("}");
+    #endif
+}
+
+void Venus838::_debug(const char* message)
+{
+    #ifdef GPS_DEBUG_BAUDRATE
+    Serial.print(message);
+    #endif
+}
+
+void Venus838::_debug(int number)
+{
+    #ifdef GPS_DEBUG_BAUDRATE
+    Serial.println(number);
+    #endif
 }
