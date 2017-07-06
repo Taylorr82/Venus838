@@ -11,22 +11,22 @@
 // 2. perform reset and match default baudrate of receiver (if requested)
 // 3. change baudrate of receiver
 // 4. match new baudrate of receiver
-Venus838::Venus838(HardwareSerial &serial, int baudrate, bool reset)
+Venus838::Venus838(HardwareSerial &gpsSerial, int baudrate, bool reset)
 {
     #ifdef GPS_DEBUG_BAUDRATE
     Serial.begin(GPS_DEBUG_BAUDRATE);
     Serial.println("Debuggging initialized");
     #endif
 
-    _serial = serial;
-    if (baudrate == DEFAULTBAUDRATE)
+    _gpsSerial = gpsSerial;
+    if (baudrate == GPS_DEFAULT_BAUDRATE)
     {
-        _serial.begin(baudrate);
+        _gpsSerial.begin(baudrate);
     }
     else
     {
-        int currentbaudrate = _getBaudRate(_serial);
-        _serial.begin(currentbaudrate);
+        int currentbaudrate = _getBaudRate();
+        _gpsSerial.begin(currentbaudrate);
         if (reset)
         {
             resetReceiver(true);
@@ -56,14 +56,14 @@ char Venus838::setBaudRate(int baudrate, char attribute)
     }
     if (!baudrateset)
     {
-        return INVALIDARG;
+        return GPS_INVALIDARG;
     }
     messagebody[2] = attribute;
     char code = _sendCommand(0x05, messagebody, 3); //messageid = 5
-    if (code == NORMAL)
+    if (code == GPS_NORMAL)
     {
-        _serial.end();
-        _serial.begin(baudrate); //restart the serial port to the new baudrate
+        _gpsSerial.end();
+        _gpsSerial.begin(baudrate); //restart the serial port to the new baudrate
         return code;
     }
     return code;
@@ -98,11 +98,11 @@ char Venus838::resetReceiver(bool reboot)
     memset(messagebody, 0, 1);
     messagebody[0] = reboot ? 1 : 0;
     char code = _sendCommand(0x04, messagebody, 1, 10000);
-    if (code == NORMAL)
+    if (code == GPS_NORMAL)
     {
         delay(500);
-        _serial.end();
-        _serial.begin(DEFAULTBAUDRATE);
+        _gpsSerial.end();
+        _gpsSerial.begin(GPS_DEFAULT_BAUDRATE);
     }
     return code;
 }
@@ -156,28 +156,28 @@ char Venus838::cfgNMEA(char nmeabyte, char attribute)
     _debug("Configuring all NMEA strings\n");
     char messagebody[8];
     memset(messagebody, 0, 8);
-    messagebody[0] = (nmeabyte >> GGA) & 1;
-    messagebody[1] = (nmeabyte >> GSA) & 1;
-    messagebody[2] = (nmeabyte >> GSV) & 1;
-    messagebody[3] = (nmeabyte >> GLL) & 1;
-    messagebody[4] = (nmeabyte >> RMC) & 1;
-    messagebody[5] = (nmeabyte >> VTG) & 1;
-    messagebody[6] = (nmeabyte >> ZDA) & 1;
+    messagebody[0] = (nmeabyte >> NMEA_GGA) & 1;
+    messagebody[1] = (nmeabyte >> NMEA_GSA) & 1;
+    messagebody[2] = (nmeabyte >> NMEA_GSV) & 1;
+    messagebody[3] = (nmeabyte >> NMEA_GLL) & 1;
+    messagebody[4] = (nmeabyte >> NMEA_RMC) & 1;
+    messagebody[5] = (nmeabyte >> NMEA_VTG) & 1;
+    messagebody[6] = (nmeabyte >> NMEA_ZDA) & 1;
     messagebody[7] = attribute;
     return _sendCommand(0x08, messagebody, 8);
 }
 
 bool Venus838::available()
 {
-    return _serial.available();
+    return _gpsSerial.available();
 }
 
 char Venus838::read()
 {
-    return _serial.read();
+    return _gpsSerial.read();
 }
 
-int Venus838::_getBaudRate(HardwareSerial &serial)
+int Venus838::_getBaudRate()
 {
     _debug("Autodetecting baud rate\n");
 
@@ -185,14 +185,14 @@ int Venus838::_getBaudRate(HardwareSerial &serial)
     bool baudratefound = false;
     while (!baudratefound)
     {
-        _serial.begin(_baudrates[i]);
+        _gpsSerial.begin(_baudrates[i]);
 
         _debug("trying baudrate ");
         _debug(_baudrates[i]);
 
         char response = querySoftwareVersion();
 
-        if (response == NORMAL)
+        if (response == GPS_NORMAL)
         {
             baudratefound = true;
         }
@@ -204,7 +204,7 @@ int Venus838::_getBaudRate(HardwareSerial &serial)
         {
             i = 0;
         }
-        _serial.end();
+        _gpsSerial.end();
     }
     return _baudrates[i];
 }
@@ -249,7 +249,7 @@ char Venus838::_sendCommand(char messageid, char* messagebody, int bodylen, uint
     _debug("response code ");
     _debug(code);
 
-    if (code != NORMAL)
+    if (code != GPS_NORMAL)
     {
         _debug("failed, trying again\n");
         code = _sendPacket(packet, packetlength, timeout / 2);
@@ -264,33 +264,33 @@ char Venus838::_sendPacket(char* packet, int size, uint timeout)
     char c = 0;
     char last = 0;
     bool response = false;
-    _serial.write(packet, size);
+    _gpsSerial.write(packet, size);
     // wait for repsonse
     for(uint start = millis(); millis() - start < timeout;)
     {
-        while (_serial.available())
+        while (_gpsSerial.available())
         {
-            c = _serial.read();
+            c = _gpsSerial.read();
             if (last == 0xA0 and c == 0xA1 and response == false)
                 response = true;
             if (response and last == 0x83)
             {
                 if (c == packet[4]) //packet[4] = messageid
-                    return NORMAL;
+                    return GPS_NORMAL;
                 else
-                    return UNKNOWN;
+                    return GPS_UNKNOWN;
             }
             else if (response and last == 0x84)
             {
                 if (c == packet[4]) //packet[4] = messageid
-                    return NACK;
+                    return GPS_NACK;
                 else
-                    return UNKNOWN;
+                    return GPS_UNKNOWN;
             }
             last = c;
         }
     }
-    return TIMEOUT;
+    return GPS_TIMEOUT;
 }
 
 void Venus838::_printPacket(char* packet, int size)

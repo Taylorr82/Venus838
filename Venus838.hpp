@@ -11,30 +11,30 @@
 #define GPS_DEBUG_BAUDRATE 115200
 
 // NMEA strings enum definitions
-#define GGA 0
-#define GSA 1
-#define GSV 2
-#define GLL 3
-#define RMC 4
-#define VTG 5
-#define ZDA 6
+#define NMEA_GGA 0
+#define NMEA_GSA 1
+#define NMEA_GSV 2
+#define NMEA_GLL 3
+#define NMEA_RMC 4
+#define NMEA_VTG 5
+#define NMEA_ZDA 6
 
 // Return status/error codes
-#define NORMAL     0
-#define NACK       1
-#define TIMEOUT    2
-#define INVALIDARG 3
-#define UNKNOWN    4
+#define GPS_NORMAL     0
+#define GPS_NACK       1
+#define GPS_TIMEOUT    2
+#define GPS_INVALIDARG 3
+#define GPS_UNKNOWN    4
 
-#define TIMEOUTMS 1000 //default wait time for how long the sender should wait for ack
+#define GPS_ACK_TIMEOUT_MS 1000 //default wait time for how long the sender should wait for ack
 
-#define DEFAULTBAUDRATE 9600 //default baud rate of GPS receiver (should be 9600)
+#define GPS_DEFAULT_BAUDRATE 9600 //default baud rate of GPS receiver (should be 9600)
 
 class Venus838
 {
 public:
 
-    Venus838(HardwareSerial &serial, int baudrate, bool reset); //pass hardwareserial port by reference
+    Venus838(HardwareSerial &gpsSerial, int baudrate, bool reset); //pass hardwareserial port by reference
 
     // Receiver configuration/command methods
     char setBaudRate(int baudrate, char attribute);
@@ -54,9 +54,9 @@ private:
 
     const int _baudrates[6] = {4800, 9600, 19200, 38400, 57600, 115200};
     char _nmeastate; //stores current configuration of which NMEA strings are enabled
-    HardwareSerial _serial;
+    HardwareSerial _gpsSerial;
 
-    int _getBaudRate(HardwareSerial &serial);
+    int _getBaudRate();
     char _sendCommand(char messageid, char* messagebody, int bodylen); //uses default timeout specified by TIMEOUTMS
     char _sendCommand(char messageid, char* messagebody, int bodylen, uint timemout);
     char _sendPacket(char* packet, int size, uint timeout);
