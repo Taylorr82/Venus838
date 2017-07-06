@@ -209,12 +209,12 @@ int Venus838::_getBaudRate()
     return _baudrates[i];
 }
 
-char Venus838::_sendCommand(char messageid, char* messagebody, int bodylen)
+char Venus838::_sendCommand(char messageid, char *messagebody, int bodylen)
 {
     return _sendCommand(messageid, messagebody, bodylen, TIMEOUTMS);
 }
 
-char Venus838::_sendCommand(char messageid, char* messagebody, int bodylen, uint timeout)
+char Venus838::_sendCommand(char messageid, char *messagebody, int bodylen, uint timeout)
 {
     _debug("sending command\n");
     // Assemble Packet
@@ -259,7 +259,7 @@ char Venus838::_sendCommand(char messageid, char* messagebody, int bodylen, uint
     return code;
 }
 
-char Venus838::_sendPacket(char* packet, int size, uint timeout)
+char Venus838::_sendPacket(char *packet, int size, uint timeout)
 {
     char c = 0;
     char last = 0;
@@ -293,7 +293,7 @@ char Venus838::_sendPacket(char* packet, int size, uint timeout)
     return GPS_TIMEOUT;
 }
 
-void Venus838::_printPacket(char* packet, int size)
+void Venus838::_printPacket(char *packet, int size)
 {
     #ifdef GPS_DEBUG_BAUDRATE
     Serial.print("assembled Packet: {");
@@ -308,7 +308,7 @@ void Venus838::_printPacket(char* packet, int size)
     #endif
 }
 
-void Venus838::_debug(const char* message)
+void Venus838::_debug(const char *message)
 {
     #ifdef GPS_DEBUG_BAUDRATE
     Serial.print(message);

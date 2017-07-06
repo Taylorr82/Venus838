@@ -57,13 +57,13 @@ private:
     HardwareSerial _gpsSerial;
 
     int _getBaudRate();
-    char _sendCommand(char messageid, char* messagebody, int bodylen); //uses default timeout specified by TIMEOUTMS
-    char _sendCommand(char messageid, char* messagebody, int bodylen, uint timemout);
-    char _sendPacket(char* packet, int size, uint timeout);
+    char _sendCommand(char messageid, char *messagebody, int bodylen); //uses default timeout specified by TIMEOUTMS
+    char _sendCommand(char messageid, char *messagebody, int bodylen, uint timemout);
+    char _sendPacket(char *packet, int size, uint timeout);
 
     // debug
-    void _printPacket(char* packet, int size);
-    void _debug(const char* message);
+    void _printPacket(char *packet, int size);
+    void _debug(const char *message);
     void _debug(int number);
 };
 
