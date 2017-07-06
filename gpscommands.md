@@ -39,7 +39,7 @@ Reset internal parameters to factory defaults and reboot.<br>
 Payload byte 1: Message ID = 04<br>
 Payload byte 2: Mode = 01 (00: reserved, 01: reboot after setting to factory defaults)
 
-#### Configure Serial port
+#### Configure Serial Port
 Configure the baud rate of the GPS receiver.<br>
 <code>| A0 A1 | 00 04 | 05 00 01 00 | 04 | 0D 0A |</code><br>
 Payload byte 1: Message ID = 05<br>
@@ -47,7 +47,7 @@ Payload byte 2: COM port = 00 (COM 1)<br>
 Payload byte 3: Baud rate = 01 (00: 4800, 01: 9600 (Default), 02: 19200, 03: 38400, 04: 57600, 05: 115200)<br>
 Payload byte 4: Attributes = 00 (00: normal update (RAM only), 01: update RAM and flash)
 
-#### Configure NMEA message
+#### Configure NMEA Message
 Configure interval of each NMEA message.<br>
 <code>| A0 A1 | 00 09 | 08 01 01 01 01 01 01 01 01 | 08 | 0D 0A |</code><br>
 Payload byte 1: Message ID = 08<br>
@@ -59,6 +59,12 @@ Payload byte 6: RMC interval = 01 (0 - 255, 00: disable, 01: default)<br>
 Payload byte 7: VTG interval = 00 (0 - 255, 00: disable, 01: default)<br>
 Payload byte 8: ZDA interval = 00 (0 - 255, 00: disable, 01: default)<br>
 Payload byte 9: Attributes = 00 (00: normal update (RAM only), 01: update RAM and flash)
+
+#### Configure Message Type
+Change the GPS receiver output message type.<br>
+<code>| A0 A1 | 00 02 | 09 01 | 08 | 0D 0A |</code><br>
+Payload byte 1: Message ID = 09<br>
+Payload byte 2: Type = 01 (00: No output, 01: NMEA message, 02: Binary message)
 
 #### Configure Power Mode
 Configure the system power mode<br>
@@ -81,9 +87,9 @@ Payload byte 1: Message ID = 3E<br>
 Payload byte 2: 1PPS Mode = 00 (00: off, 01: on when 3D fix, 02: on when 1 SV)<br>
 Payload byte 3: Attributes = 00 (00: RAM only, 01: RAM and flash)
 
-## GPS responses
+## GPS Responses
 
-#### Software version
+#### Software Version
 Response message which provides software version of the GPS Receiver.<br>
 <code>| A0 A1 | 00 0E | 80 01 00 00 00 00 00 00 00 00 00 00 00 00 | 81 | 0D 0A |</code><br>
 Message byte 1: Message ID = 80<br>
