@@ -1,4 +1,15 @@
 hdop, vdop, pdop (GSA string)
 time until lock (ttff) procedure
 
-refactor code to change variable names
+
+Need to save:
+    data:
+        time,lat,long,alt,velocity
+        number of satellites, fix type, dop
+    strings:
+        GGA (time, lat, long, alt, hdop, number of sats, fix quality)
+        GSA (pdop, hdop, vdop, fix type)
+        RMC (time, lat, long, velocity, date)
+
+Stretch goal (do confidence interval and attempt to correlate margin of error with dop, number of satellites, fix type, etc.)
+accuracy/error (in m for lat/long/alt)
