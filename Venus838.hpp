@@ -19,13 +19,6 @@
 #define NMEA_VTG 5
 #define NMEA_ZDA 6
 
-// Return status/error codes
-#define GPS_NORMAL     0
-#define GPS_NACK       1
-#define GPS_TIMEOUT    2
-#define GPS_INVALIDARG 3
-#define GPS_UNKNOWN    4
-
 #define GPS_ACK_TIMEOUT_MS 1000 //default wait time for how long the sender should wait for ack
 
 #define GPS_DEFAULT_BAUDRATE 9600 //default baud rate of GPS receiver (should be 9600)
@@ -46,11 +39,18 @@ public:
     char cfgPowerSave(bool enable, char attribute);
     char cfgPPS(char mode, char attribute);
 
-    //Serial wrapper methods
+    // Serial wrapper methods
     bool available();
     char read();
 
 private:
+
+    // error codes
+    const int GPS_NORMAL = 0;
+    const int GPS_NACK = 1;
+    const int GPS_TIMEOUT = 2;
+    const int GPS_INVALIDARG = 3;
+    const int GPS_UNKNOWN = 4;
 
     const int _baudrates[6] = {4800, 9600, 19200, 38400, 57600, 115200};
     char _nmeastate; //stores current configuration of which NMEA strings are enabled
