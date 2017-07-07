@@ -7,7 +7,7 @@ NMEA messages begin with the '$' character followed by the message title/id (GPG
 #### GGA - Fix information
 
 ```
-$GPGGA,hhmmss.s,ddmm.m,i,dddmm.m,i,q,nn,h.h,mmm.m,M,,,,*cc
+$GPGGA,hhmmss.s,ddmm.m,i,dddmm.m,i,q,nn,h.h,mmm.m,M,m.m,M,,xxxx*cc
 
 Where:
     hhmmss.s    UTC Time of Fix
@@ -25,6 +25,8 @@ Where:
     nn          Number of satellites being tracked
     h.h         Horizontal dilution of position
     m.m,M       Altitude, Meters, above mean sea level
+    m.m,M       Height of geoid (mean sea level) above WGS84 ellipsoid
+    xxxx        DGPS Station ID Number
     *cc         Checksum
 ```
 
