@@ -8,7 +8,7 @@
 
 #include "Arduino.h"
 
-#define GPS_DEBUG_BAUDRATE 115200
+//#define GPS_DEBUG_BAUDRATE 115200
 
 // NMEA strings enum definitions
 #define NMEA_GGA 0
@@ -18,16 +18,17 @@
 #define NMEA_RMC 4
 #define NMEA_VTG 5
 #define NMEA_ZDA 6
+#define NMEA_UNKNOWN 7
 
-#define GPS_ACK_TIMEOUT_MS 1000 //default wait time for how long the sender should wait for ack
+#define GPS_ACK_TIMEOUT_MS 1000 // default wait time for how long the sender should wait for ack
 
-#define GPS_DEFAULT_BAUDRATE 9600 //default baud rate of GPS receiver (should be 9600)
+#define GPS_DEFAULT_BAUDRATE 9600 // default baud rate of GPS receiver (should be 9600)
 
 class Venus838
 {
 public:
 
-    Venus838(HardwareSerial &gpsSerial, int baudrate, bool reset); //pass hardwareserial port by reference
+    Venus838(HardwareSerial &gpsSerial, int baudrate, bool reset); // pass hardwareserial port by reference
 
     // Receiver configuration/command methods
     char setBaudRate(int baudrate, char attribute);
@@ -53,11 +54,11 @@ private:
     const int GPS_UNKNOWN = 4;
 
     const int _baudrates[6] = {4800, 9600, 19200, 38400, 57600, 115200};
-    char _nmeastate; //stores current configuration of which NMEA strings are enabled
+    char _nmeastate; // stores current configuration of which NMEA strings are enabled
     HardwareSerial _gpsSerial;
 
     int _getBaudRate();
-    char _sendCommand(char messageid, char *messagebody, int bodylen); //uses default timeout specified by TIMEOUTMS
+    char _sendCommand(char messageid, char *messagebody, int bodylen); // uses default timeout specified by TIMEOUTMS
     char _sendCommand(char messageid, char *messagebody, int bodylen, uint timemout);
     char _sendPacket(char *packet, int size, uint timeout);
 

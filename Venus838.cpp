@@ -33,7 +33,7 @@ Venus838::Venus838(HardwareSerial &gpsSerial, int baudrate, bool reset)
         }
         setBaudRate(baudrate, 0);
     }
-    _nmeastate = 0b1111111; //enable all nmea messages;
+    _nmeastate = 0b1111111; // enable all nmea messages;
 }
 
 // Attribute:
@@ -44,7 +44,7 @@ char Venus838::setBaudRate(int baudrate, char attribute)
     _debug("Setting baud rate\n");
     char messagebody[3];
     memset(messagebody, 0, 3);
-    messagebody[0] = 0x00; //COM port 1
+    messagebody[0] = 0x00; // COM port 1
     bool baudrateset = false;
     for (int i = 0; i < 6; i++)
     {
@@ -59,11 +59,11 @@ char Venus838::setBaudRate(int baudrate, char attribute)
         return GPS_INVALIDARG;
     }
     messagebody[2] = attribute;
-    char code = _sendCommand(0x05, messagebody, 3); //messageid = 5
+    char code = _sendCommand(0x05, messagebody, 3); // messageid = 5
     if (code == GPS_NORMAL)
     {
         _gpsSerial.end();
-        _gpsSerial.begin(baudrate); //restart the serial port to the new baudrate
+        _gpsSerial.begin(baudrate); // restart the serial port to the new baudrate
         return code;
     }
     return code;
@@ -211,7 +211,7 @@ int Venus838::_getBaudRate()
 
 char Venus838::_sendCommand(char messageid, char *messagebody, int bodylen)
 {
-    return _sendCommand(messageid, messagebody, bodylen, TIMEOUTMS);
+    return _sendCommand(messageid, messagebody, bodylen, GPS_ACK_TIMEOUT_MS);
 }
 
 char Venus838::_sendCommand(char messageid, char *messagebody, int bodylen, uint timeout)
@@ -222,10 +222,10 @@ char Venus838::_sendCommand(char messageid, char *messagebody, int bodylen, uint
     char packet[packetlength];
     memset(packet, 0, packetlength);
 
-    packet[0] = 0xA0; //start sequence
+    packet[0] = 0xA0; // start sequence
     packet[1] = 0xA1;
 
-    packet[2] = (char) ((bodylen + 1) >> 8); //payload length includes message id
+    packet[2] = (char) ((bodylen + 1) >> 8); // payload length includes message id
     packet[3] = (char) bodylen + 1;
 
     packet[4] = messageid;
@@ -239,7 +239,7 @@ char Venus838::_sendCommand(char messageid, char *messagebody, int bodylen, uint
     }
     packet[packetlength - 3] = checksum;
 
-    packet[packetlength - 2] = 0x0D; //terminate command with crlf
+    packet[packetlength - 2] = 0x0D; // terminate command with crlf
     packet[packetlength - 1] = 0x0A;
 
     // Send Packet
@@ -275,14 +275,14 @@ char Venus838::_sendPacket(char *packet, int size, uint timeout)
                 response = true;
             if (response and last == 0x83)
             {
-                if (c == packet[4]) //packet[4] = messageid
+                if (c == packet[4]) // packet[4] = messageid
                     return GPS_NORMAL;
                 else
                     return GPS_UNKNOWN;
             }
             else if (response and last == 0x84)
             {
-                if (c == packet[4]) //packet[4] = messageid
+                if (c == packet[4]) // packet[4] = messageid
                     return GPS_NACK;
                 else
                     return GPS_UNKNOWN;
