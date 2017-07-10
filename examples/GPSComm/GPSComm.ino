@@ -28,7 +28,7 @@ void loop()
     while (Serial1.available())
     {
         c = Serial1.read();
-        Serial.write(c);
+        //Serial.write(c);
         newdata = parser.encode(c);
     }
     if (newdata)
@@ -40,6 +40,8 @@ void loop()
         short hdop = parser.getHDOP();
         short vdop = parser.getVDOP();
         char numsats = parser.getNSats();
-        Serial.printf("%d,%d,%d,%d,%d,%d,%d\n", latitude, longitude, altitude, pdop, hdop, vdop, numsats);
+        char numsatsvisible = parser.getNSatsVisible();
+        long snravg = parser.getSNR();
+        Serial.printf("%d,%d,%d,%d,%d,%d,%d,%d,%d\n", latitude, longitude, altitude, pdop, hdop, vdop, numsats, numsatsvisible, snravg);
     }
 }
