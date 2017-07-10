@@ -1,15 +1,17 @@
 hdop, vdop, pdop (GSA string)
 time until lock (ttff) procedure
 
-
 Need to save:
     data:
-        time,lat,long,alt,velocity
+        time,lat,lon,alt,velocity
         number of satellites, fix type, dop
     strings:
-        GGA (time, lat, long, alt, hdop, number of sats, fix quality)
+        GGA (time, lat, lon, alt, hdop, number of sats, fix quality)
         GSA (pdop, hdop, vdop, fix type)
-        RMC (time, lat, long, velocity, date)
+        RMC (time, lat, lon, velocity, date)
+
+calculate average SNR from GPGSV for help with correlation against ME of lat/lon/alt (complete)
+ADD INVALID VALUES AND ONLY RETURN TRUE FOR ENCODE FUNCTION WHEN RECEIVER ACTUALLY HAS DATA (partially complete)
 
 Stretch goal (do confidence interval and attempt to correlate margin of error with dop, number of satellites, fix type, etc.)
-accuracy/error (in m for lat/long/alt)
+accuracy/error (in m for lat/lon/alt)
