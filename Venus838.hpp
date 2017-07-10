@@ -8,9 +8,10 @@
 
 #include "Arduino.h"
 
+// Uncomment this line to enable debugging over Serial.
 //#define GPS_DEBUG_BAUDRATE 115200
 
-// NMEA strings enum definitions
+// NMEA strings enum definitions (also used by NMEAParser)
 #define NMEA_GGA 0
 #define NMEA_GSA 1
 #define NMEA_GSV 2
