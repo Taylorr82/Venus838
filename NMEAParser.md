@@ -197,25 +197,25 @@ while (Serial.available())
 }
 ```
 
-#### Accessor Methods (for private fields)
-###### unsigned long getTime() {return \_time;}
-###### unsigned short getDate() {return \_date;}
-###### long getLatitude() {return \_latitude;}
-###### long getLongitude() {return \_longitude;}
-###### long getAltitude() {return \_altitude;}
-###### unsigned short getPDOP() {return \_pdop;}
-###### unsigned short getVDOP() {return \_vdop;}
-###### unsigned short getHDOP() {return \_hdop;}
-###### unsigned char getNSats() {return \_numsats;}
-###### unsigned char getFixQuality() {return \_fixquality;}
-###### unsigned char getFixType() {return \_fixtype;}
-###### unsigned long getSpeed() {return \_speed;}
-###### unsigned short getCourse() {return \_course;}
-###### unsigned long timeAge() {return \_last_time_fix;}
-###### unsigned long positionAge() {return \_last_position_fix;}
-###### unsigned char getNSatsVisible() {return \_numsats_visible;}
-###### unsigned long getSNR() {return \_snr_avg;}
-###### unsigned char getNSNR() {return \_snr_count;}
+### Accessor Methods (for private fields)
+#### unsigned long getTime() {return \_time;}
+#### unsigned short getDate() {return \_date;}
+#### long getLatitude() {return \_latitude;}
+#### long getLongitude() {return \_longitude;}
+#### long getAltitude() {return \_altitude;}
+#### unsigned short getPDOP() {return \_pdop;}
+#### unsigned short getVDOP() {return \_vdop;}
+#### unsigned short getHDOP() {return \_hdop;}
+#### unsigned char getNSats() {return \_numsats;}
+#### unsigned char getFixQuality() {return \_fixquality;}
+#### unsigned char getFixType() {return \_fixtype;}
+#### unsigned long getSpeed() {return \_speed;}
+#### unsigned short getCourse() {return \_course;}
+#### unsigned long timeAge() {return \_last_time_fix;}
+#### unsigned long positionAge() {return \_last_position_fix;}
+#### unsigned char getNSatsVisible() {return \_numsats_visible;}
+#### unsigned long getSNR() {return \_snr_avg;}
+#### unsigned char getNSNR() {return \_snr_count;}
 
 ### Private Methods
 
@@ -238,7 +238,7 @@ The returned <code>long</code> is equal to 100 times the number represented by t
 
 Similar to <code>\_parse_decimal(char \*p)</code>, this method parses a string of numbers.
 However, it expects a numeric string encoded as ddmm.mm (or dddmm.mm), where d is degrees, and m is minutes (1/60 of a degree).<br>
-The returned <code>long</code> is equal to the __decimal__** form (ie. dd.dd), in millionths of a degree.
+The returned <code>long</code> is equal to the ***decimal*** form (ie. dd.dd), in millionths of a degree.
 
 #### bool \_log_sentence();
 
