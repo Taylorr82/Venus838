@@ -1,5 +1,6 @@
 /*
     NMEAParser.hpp - Library for parsing NMEA strings from a GPS
+    Decodes GGA, GSA, GSV, and RMC strings
     Reed A. Foster, July 2017.
 */
 
@@ -9,7 +10,19 @@
 #include "Arduino.h"
 #include "Venus838.hpp"
 
-#define NMEATERM_MAXLENGTH 15
+#ifndef "Venus838_h"
+#define NMEA_GGA 0
+#define NMEA_GSA 1
+#define NMEA_GSV 2
+#define NMEA_GLL 3
+#define NMEA_RMC 4
+#define NMEA_VTG 5
+#define NMEA_ZDA 6
+#define NMEA_UNKNOWN 7
+#endif
+
+#define NMEASENTENCE_MAXLENGTH 120
+#define NMEASENTENCE_MAXTERMS 25
 
 class NMEAParser
 {
@@ -20,7 +33,7 @@ public:
         GPS_INVALID_ALTITUDE = 999999999,   GPS_INVALID_DATE = 0,
         GPS_INVALID_TIME = 0xFFFFFFFF,      GPS_INVALID_SPEED = 999999999,
         GPS_INVALID_FIX_TIME = 0xFFFFFFFF,  GPS_INVALID_SATELLITES = 0xFF,
-        GPS_INVALID_AGE = 0xFFFFFFFF
+        GPS_INVALID_AGE = 0xFFFFFFFF,       GPS_INVALID_SNR = 0xFFFFFFFF
     };
 
     NMEAParser();
@@ -45,25 +58,18 @@ public:
     inline unsigned long positionAge() {return _last_position_fix;}
     inline unsigned char getNSatsVisible() {return _numsats_visible;}
     inline unsigned long getSNR() {return _snr_avg;}
+    inline unsigned char getNSNR() {return _snr_count;}
 
 private:
 
-    int _hexToInt(char c);
-    long _decStringToInt(char *c);
-    int _strcmp(const char *str1, const char *str2);
-    long _parse_decimal();
-    long _parse_degrees();
-    void _logTerm();
+    int _termcmp(const char *str1, const char *str2);
+    int _hexToInt(char hex);
+    long _parse_decimal(char *p);
+    long _parse_degrees(char *p);
+    bool _log_sentence();
 
-    char _term[NMEATERM_MAXLENGTH];
-    int _term_offset;
-    int _term_number;
-    bool _is_checksum_term;
-
-    int _sentence_type;
-
-    int _parity;
-    bool _gps_data_good;
+    char _sentence[NMEASENTENCE_MAXLENGTH];
+    int  _char_offset;
 
     const char _GPGGA_TERM[7] = "$GPGGA";
     const char _GPGLL_TERM[7] = "$GPGLL";
@@ -73,27 +79,37 @@ private:
     const char _GPVTG_TERM[7] = "$GPVTG";
     const char _GPZDA_TERM[7] = "$GPZDA";
 
-    unsigned long   _time, _new_time; // UTC time in hundredths of a second
-    unsigned short  _date, _new_date; // UTC date
-    long            _latitude, _new_latitude; // latitude in hundred thousandths of a degree
-    long            _longitude, _new_longitude; // longitude in hundred thousandths of a degree
-    long            _altitude, _new_altitude; // altitude in centimeters
-    unsigned long   _speed, _new_speed; // speed in hundredths of kph
-    unsigned short  _course, _new_course; // course in hundredths of a degree
-    unsigned short  _hdop, _new_hdop; // hdop (scaled by 100, i.e. 120 corresponds to a dop of 1.2)
-    unsigned short  _vdop, _new_vdop; // vdop (same scale as hdop)
-    unsigned short  _pdop, _new_pdop; // pdop (same scale as hdop)
-    unsigned char   _numsats, _new_numsats; // number of satellites used for fix
-    unsigned char   _numsats_visible, _new_numsats_visible; // number of satellites visible to gps
+    // GGA Variables
+    unsigned long   _time; // UTC time in hundredths of a second
+    long            _latitude; // latitude in hundred thousandths of a degree
+    long            _longitude; // longitude in hundred thousandths of a degree
+    unsigned char   _fixquality;
+    unsigned char   _numsats; // number of satellites used for fix
+    unsigned short  _hdop; // horizontal dilution of position (scaled by 100, i.e. 120 corresponds to a dop of 1.2)
+    long            _altitude; // altitude in centimeters
+
+    // GSA Variables
+    unsigned char   _fixtype;
+    unsigned short  _pdop; // positional dop (same scale as hdop)
+    unsigned short  _vdop; // vertical dop (same scale as hdop)
+
+    // GSV Variables
+    unsigned char   _numsats_visible; // number of satellites visible to gps
     unsigned char   _gsv_sentence, _gsv_sentences; // counter and total for gsv messages
-    unsigned long   _snr_total; // sum of snr from all satellites
+    unsigned char   _snr_count; // count of satellites with Signal to Noise Ratio
+    unsigned long   _snr_total, _new_snr_total; // sum of Signal to Noise Ratios (C/No, in dB) from all satellites
     unsigned long   _snr_avg; // average snr of gsv message (over all sentences) scaled by 100 (i.e. 4500 corresponds to an average SNR of 45)
 
-    unsigned char   _fixquality, _new_fixquality;
-    unsigned char   _fixtype, _new_fixtype;
+    // RMC Variables
+    unsigned long   _speed; // speed in hundredths of kph
+    unsigned short  _course; // course in hundredths of a degree
+    unsigned short  _date; // UTC date
 
-    unsigned long   _last_time_fix, _new_time_fix;
-    unsigned long   _last_position_fix, _new_position_fix;
+    // Add variables for additional NMEA sentences here
+
+    // Other status
+    unsigned long   _last_time_fix;
+    unsigned long   _last_position_fix;
 };
 
 #endif

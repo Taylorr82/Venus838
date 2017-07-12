@@ -1,155 +1,290 @@
 /*
-    NMEAParser.cpp - Library for parsing NMEA strings from a GPS (slight modification of TinyGPS)
-    Decodes GGA, RMC, GSA, and GSV strings
+    NMEAParser.cpp - Library for parsing NMEA strings from a GPS
+    Decodes GGA, GSA, GSV, and RMC strings
     Reed A. Foster, July 2017.
 */
 
 #include "NMEAParser.hpp"
 
 NMEAParser::NMEAParser() :
-    _term_offset(0),
-    _term_number(0),
-    _is_checksum_term(false),
-    _sentence_type(NMEA_UNKNOWN),
-    _parity(0),
-    _gps_data_good(false),
+
+    _char_offset(0),
+
     _time(GPS_INVALID_TIME),
-    _date(GPS_INVALID_DATE),
     _latitude(GPS_INVALID_ANGLE),
     _longitude(GPS_INVALID_ANGLE),
-    _altitude(GPS_INVALID_ALTITUDE),
-    _speed(GPS_INVALID_SPEED),
-    _course(GPS_INVALID_ANGLE),
-    _hdop(GPS_INVALID_DOP),
-    _vdop(GPS_INVALID_DOP),
-    _pdop(GPS_INVALID_DOP),
+    _fixquality(-1),
     _numsats(GPS_INVALID_SATELLITES),
+    _hdop(GPS_INVALID_DOP),
+    _altitude(GPS_INVALID_ALTITUDE),
+
+    _fixtype(0),
+    _pdop(GPS_INVALID_DOP),
+    _vdop(GPS_INVALID_DOP),
+
     _numsats_visible(GPS_INVALID_SATELLITES),
     _gsv_sentence(0),
     _gsv_sentences(0),
-    _snr_total(0),
-    _fixquality(0),
-    _fixtype(0),
+    _snr_count(0),
+    _snr_total(GPS_INVALID_SNR),
+    _new_snr_total(0),
+    _snr_avg(GPS_INVALID_SNR),
+
+    _speed(GPS_INVALID_SPEED),
+    _course(GPS_INVALID_ANGLE),
+    _date(GPS_INVALID_DATE),
+
     _last_time_fix(GPS_INVALID_FIX_TIME),
     _last_position_fix(GPS_INVALID_FIX_TIME)
 {
-    _term[0] = 0;
+    _sentence[0] = 0;
 }
 
 bool NMEAParser::encode(char c)
 {
-    switch (c)
+    bool new_data = false;
+    if (c == '\n')
     {
-        case ',':
-        case '*':
-        case '\n':
-            _is_checksum_term = c == '*';
-            _term[_term_offset] = 0;
-            _logTerm();
-            _term_number++;
-            _term_offset = 0;
-            if (_term[0] == '*')
+        if (_sentence[_char_offset - 4] == '*') // checksum exists
+        {
+            int checksum = _hexToInt(_sentence[_char_offset - 2]) + _hexToInt(_sentence[_char_offset - 3]) * 16;
+            _char_offset -= 5;
+            while (_sentence[_char_offset] && _sentence[_char_offset] != '$')
+                checksum ^= _sentence[_char_offset--];
+            if (checksum == 0) // checksum is valid
             {
-                _is_checksum_term = true;
-                int checksum = _hexToInt(_term[1]) * 16 + _hexToInt(_term[2]);
-                if (checksum == _parity)
-                {
-                    if ((_sentence_type == NMEA_RMC && _gps_data_good) ||
-                        (_sentence_type == NMEA_GGA && _new_fixquality > 0) || // fix quality > invalid
-                        (_sentence_type == NMEA_GSA && _new_fixtype > 1) || // fix type is 2D or 3D
-                        (_sentence_type == NMEA_GSV))
-                    {
-                        if (_sentence_type == NMEA_GGA || _sentence_type == NMEA_RMC)
-                        {
-                            _last_time_fix = _new_time_fix;
-                            _last_position_fix = _new_position_fix;
-                        }
-                        switch (_sentence_type)
-                        {
-                            case NMEA_GGA:
-                                _time = _new_time;
-                                _latitude = _new_latitude;
-                                _longitude = _new_longitude;
-                                _fixquality = _new_fixquality;
-                                _numsats = _new_numsats;
-                                _hdop = _new_hdop;
-                                _altitude = _new_altitude;
-                                break;
-
-                            case NMEA_GSA:
-                                _fixtype = _new_fixtype;
-                                _pdop = _new_pdop;
-                                _hdop = _new_hdop;
-                                _vdop = _new_vdop;
-                                break;
-
-                            case NMEA_RMC:
-                                _time = _new_time;
-                                _latitude = _new_latitude;
-                                _longitude = _new_longitude;
-                                _speed = _new_speed;
-                                _course = _new_course;
-                                _date = _new_date;
-                                break;
-
-                            case NMEA_GSV:
-                                if (_gsv_sentence == _gsv_sentences)
-                                {
-                                    _numsats_visible = _new_numsats_visible;
-                                    _snr_avg = _snr_total * 100L / _numsats_visible;
-
-                                    _new_numsats_visible = 0;
-                                    _snr_total = 0;
-                                }
-                                else
-                                {
-                                    return false;
-                                }
-                                break;
-
-                        }
-                        return true;
-                    }
-                    return false;
-                }
+                new_data = _log_sentence();
             }
-            break;
-        case '$':
-            _term_number = 0;
-            _parity = 0;
-            _is_checksum_term = false;
-            _gps_data_good = false;
-            _sentence_type = NMEA_UNKNOWN;
-            break;
+        }
     }
-
-    if (c != ',')
-        _term[_term_offset++] = c;
-    if (!_is_checksum_term && c != '$')
-        _parity ^= c;
-    return false;
-}
-
-int NMEAParser::_hexToInt(char c)
-{
-    if (c >= 'A' && c <= 'F')
-        return c - 'A' + 10;
-    else if (c >= 'a' && c <= 'f')
-        return c - 'a' + 10;
     else
-        return c - '0';
+        _sentence[_char_offset++] = c;
+    return new_data;
 }
 
-int NMEAParser::_strcmp(const char *str1, const char *str2)
+bool NMEAParser::_log_sentence()
 {
-    while (*str1 && *str1 == *str2)
+    long logtime = millis();
+
+    // determine sentence type
+    int sentence_type;
+    char title[7];
+    for (int i = 0; i < 6; i++)
+        title[i] = _sentence[i];
+    title[6] = 0;
+    if (!_termcmp(title, _GPGGA_TERM))
+        sentence_type = NMEA_GGA;
+    else if (!_termcmp(title, _GPGSA_TERM))
+        sentence_type = NMEA_GSA;
+    else if (!_termcmp(title, _GPGSV_TERM))
+        sentence_type = NMEA_GSV;
+    else if (!_termcmp(title, _GPRMC_TERM))
+        sentence_type = NMEA_RMC;
+
+    // Add additional NMEA sentence type here
+
+    else
+        sentence_type = NMEA_UNKNOWN;
+
+    if (sentence_type == NMEA_UNKNOWN)
+        return false;
+
+    char *p;
+    p = _sentence;
+
+    while (*p++ != ',') ; // skip to next term
+
+    // verify validity of sentences (if possible)
+    bool data_valid = false;
+    switch (sentence_type)
+    {
+        case NMEA_GGA:
+            for (int i = 0; i < 5; i++) // skip over sentence until start of 5th term
+                while (*p++ != ',') ;
+            data_valid = *p > '0';
+            break;
+        case NMEA_GSA:
+            for (int i = 0; i < 1; i++)
+                while (*p++ != ',') ;
+            data_valid = *p > '1';
+            break;
+        case NMEA_GSV:
+            data_valid = true;
+            break;
+        case NMEA_RMC:
+            for (int i = 0; i < 1; i++)
+                while (*p++ != ',') ;
+            data_valid = *p == 'A';
+            break;
+
+        // Add validity checking for additional NMEA sentences here
+
+    }
+    p = _sentence;
+
+    if (!data_valid)
+        return false;
+
+    while (*p++ != ',') ;
+
+    // decode data
+    int term_number = 0;
+    bool decoded = false;
+    while (!decoded)
+    {
+        switch (sentence_type)
+        {
+            case NMEA_GGA:
+                switch (term_number)
+                {
+                    case 0: // UTC Time
+                        _last_time_fix = logtime;
+                        _time = _parse_decimal(p);
+                        break;
+                    case 1: // Latitude
+                        _last_position_fix = logtime;
+                        _latitude = _parse_degrees(p);
+                        break;
+                    case 2: // Latitude Indicator
+                        _latitude = *p == 'S' ? -_latitude : _latitude;
+                        break;
+                    case 3: // Longitude
+                        _longitude = _parse_degrees(p);
+                        break;
+                    case 4: // Longitude Indicator
+                        _longitude = *p == 'W' ? -_longitude : _longitude;
+                        break;
+                    case 5: // Fix Quality
+                        _fixquality = *p - '0';
+                        break;
+                    case 6: // Number of Satellites (tracked/used for fix)
+                        _numsats = (*p - '0') * 10 + *(p + 1) - '0';
+                        break;
+                    case 7: // HDOP
+                        _hdop = (short) _parse_decimal(p);
+                        break;
+                    case 8: // Altitude
+                        _altitude = _parse_decimal(p);
+                        break;
+                }
+                break;
+            case NMEA_GSA:
+                switch (term_number)
+                {
+                    case 1: // Fix Type
+                        _fixtype = *p - '0';
+                        break;
+                    case 14: // PDOP
+                        _pdop = (short) _parse_decimal(p);
+                        break;
+                    case 15: // HDOP
+                        _hdop = (short) _parse_decimal(p);
+                        break;
+                    case 16: // VDOP
+                        _vdop = (short) _parse_decimal(p);
+                        break;
+                }
+                break;
+            case NMEA_GSV:
+                switch (term_number)
+                {
+                    case 0: // GSV Sentence Count
+                        _gsv_sentences = *p - '0';
+                        break;
+                    case 1: // GSV Current Sentence Number
+                        _gsv_sentence = *p - '0';
+                        break;
+                    case 2: // Number of Satellites (in view)
+                        _numsats_visible = (*p - '0') * 10 + *(p + 1) - '0';
+                        break;
+                    case 6: // SNR 1
+                    case 10: // SNR 2
+                    case 14: // SNR 3
+                    case 18: // SNR 4
+                        if (*p >= '0' && *p <= '9' && *(p + 1) >= '0' && *(p + 1) <= '9')
+                            _snr_count++;
+                        _new_snr_total += _parse_decimal(p);
+                        char *ptemp;
+                        ptemp = p;
+                        while (*ptemp != ',' && *ptemp != '*') ptemp++;
+                        if ((_gsv_sentence == _gsv_sentences) && (*ptemp ==  '*')) // check to see if multiline gsv message is complete
+                        {
+                            _snr_total = _new_snr_total;
+                            _snr_avg = _snr_total / _snr_count;
+                            _new_snr_total = 0;
+                            _snr_count = 0;
+                        }
+                        break;
+                }
+                break;
+            case NMEA_RMC:
+                switch (term_number)
+                {
+                    case 0: // UTC Time
+                        _last_time_fix = logtime;
+                        _time = _parse_decimal(p);
+                        break;
+                    case 2: // Latitude
+                        _last_position_fix = logtime;
+                        _latitude = _parse_degrees(p);
+                        break;
+                    case 3: // Latitude Indicator
+                        _latitude = *p == 'S' ? -_latitude : _latitude;
+                        break;
+                    case 4: // Longitude
+                        _longitude = _parse_degrees(p);
+                        break;
+                    case 5: // Longitude Indicator
+                        _longitude = *p == 'W' ? -_longitude : _longitude;
+                        break;
+                    case 6: // Speed
+                        _speed = _parse_decimal(p);
+                        break;
+                    case 7: // Course
+                        _course = _parse_decimal(p);
+                        break;
+                    case 8: // UTC Date
+                        _date = _parse_decimal(p);
+                        break;
+                }
+                break;
+
+            // Add functionality for additional NMEA sentences here
+
+        }
+        while (*p != ',' && *p != '*')
+            p++;
+        p++;
+        term_number++;
+        if (*(p - 1) == '*')
+        {
+            decoded = true;
+        }
+        if (term_number > NMEASENTENCE_MAXTERMS)
+            return false;
+    }
+    return true;
+}
+
+int NMEAParser::_termcmp(const char *str1, const char *str2)
+{
+    while (*str1 && (*str1 == *str2))
         str1++, str2++;
     return (*str1 > *str2) - (*str2 > *str1);
 }
 
-long NMEAParser::_parse_decimal()
+int NMEAParser::_hexToInt(char hex)
 {
-    char *p = _term;
+    if (hex >= 'A' && hex <= 'F')
+        return hex - 'A' + 10;
+    else if (hex >= 'a' && hex <= 'f')
+        return hex - 'a' + 10;
+    else
+        return hex - '0';
+}
+
+long NMEAParser::_parse_decimal(char *p)
+{
     bool neg = *p == '-';
     if (neg) p++;
     long ret = 0L;
@@ -168,9 +303,8 @@ long NMEAParser::_parse_decimal()
     return neg ? -ret : ret;
 }
 
-long NMEAParser::_parse_degrees()
+long NMEAParser::_parse_degrees(char *p)
 {
-    char *p = _term;
     long deg = 0L;
     while ((*(p + 2) != '.') && (*p >= '0' && *p <= '9'))
         deg = deg * 10L + *p++ - '0';
@@ -182,124 +316,4 @@ long NMEAParser::_parse_degrees()
         min = min * 10L + *p++ - '0';
     deg += min / 6;
     return deg;
-}
-
-long NMEAParser::_decStringToInt(char *c)
-{
-    long i = 0;
-    while (*c)
-        i = i * 10 + *c++ - '0';
-    return i;
-}
-
-#define GPS_COMBINE(type, number) (((unsigned)(type) << 6) | number)
-
-void NMEAParser::_logTerm()
-{
-    if (_term_number == 0)
-    {
-        if (!_strcmp(_term, _GPGGA_TERM))
-            _sentence_type = NMEA_GGA;
-        else if (!_strcmp(_term, _GPGSA_TERM))
-            _sentence_type = NMEA_GSA;
-        else if (!_strcmp(_term, _GPRMC_TERM))
-            _sentence_type = NMEA_RMC;
-        else if (!_strcmp(_term, _GPGSV_TERM))
-            _sentence_type = NMEA_GSV;
-        else
-            _sentence_type = NMEA_UNKNOWN;
-        return;
-    }
-    if (_sentence_type != NMEA_UNKNOWN);
-    {
-        switch (GPS_COMBINE(_sentence_type, _term_number))
-        {
-            case GPS_COMBINE(NMEA_GGA, 1): // UTC Time
-            case GPS_COMBINE(NMEA_RMC, 1): // UTC Time
-                _new_time_fix = millis();
-                _new_time = _parse_decimal();
-                break;
-
-            case GPS_COMBINE(NMEA_GGA, 2): // Latitude
-            case GPS_COMBINE(NMEA_RMC, 3): // Latitude
-                _new_position_fix = millis();
-                _new_latitude = _parse_degrees();
-                break;
-
-            case GPS_COMBINE(NMEA_GGA, 3): // N/S Indicator
-            case GPS_COMBINE(NMEA_RMC, 4): // N/S Indicator
-                _new_latitude *= _term[0] == 'S' ? -1 : 1;
-                break;
-
-            case GPS_COMBINE(NMEA_GGA, 4): // Longitude
-            case GPS_COMBINE(NMEA_RMC, 5): // Longitude
-                _new_longitude = _parse_degrees();
-                break;
-
-            case GPS_COMBINE(NMEA_GGA, 5): // E/W Indicator
-            case GPS_COMBINE(NMEA_RMC, 6): // E/W Indicator
-                _new_longitude *= _term[0] == 'W' ? -1 : 1;
-                break;
-
-            case GPS_COMBINE(NMEA_GGA, 6): // Fix Quality
-                _new_fixquality = _hexToInt(_term[0]);
-                break;
-
-            case GPS_COMBINE(NMEA_GGA, 7): // Number of Satellites (fix only)
-                _new_numsats = _decStringToInt(_term);
-                break;
-
-            case GPS_COMBINE(NMEA_GGA, 8): // HDOP
-            case GPS_COMBINE(NMEA_GSA, 16): // HDOP
-                _new_hdop = (short) _parse_decimal();
-                break;
-
-            case GPS_COMBINE(NMEA_GGA, 9): // Altitude
-                _new_altitude = _parse_decimal();
-                break;
-
-            case GPS_COMBINE(NMEA_GSA, 2):  // Fix Type
-                _new_fixtype = _term[0] - '0';
-                break;
-
-            case GPS_COMBINE(NMEA_GSA, 15): // PDOP
-                _new_pdop = (short) _parse_decimal();
-                break;
-
-            case GPS_COMBINE(NMEA_GSA, 17): // VDOP
-                _new_vdop = (short) _parse_decimal();
-                break;
-
-            case GPS_COMBINE(NMEA_RMC, 7): // Speed
-                _new_speed = _parse_decimal();
-                break;
-
-            case GPS_COMBINE(NMEA_RMC, 8): // Course
-                _new_speed = _parse_decimal();
-                break;
-
-            case GPS_COMBINE(NMEA_RMC, 9): // UTC Date
-                _new_date = _parse_decimal();
-                break;
-
-            case GPS_COMBINE(NMEA_GSV, 1): // Number of GSV sentences (usually 3)
-                _gsv_sentences = _decStringToInt(_term);
-                break;
-
-            case GPS_COMBINE(NMEA_GSV, 2): // GSV sentence number
-                _gsv_sentence = _decStringToInt(_term);
-                break;
-
-            case GPS_COMBINE(NMEA_GSV, 3): // Number of Visible Satellites
-                _new_numsats_visible = _decStringToInt(_term);
-                break;
-
-            case GPS_COMBINE(NMEA_GSV, 7):
-            case GPS_COMBINE(NMEA_GSV, 11):
-            case GPS_COMBINE(NMEA_GSV, 15):
-            case GPS_COMBINE(NMEA_GSV, 19):
-                _snr_total += _decStringToInt(_term);
-                break;
-        }
-    }
 }
