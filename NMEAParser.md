@@ -255,30 +255,30 @@ Currently, NMEAParser only supports GGA, GSA, GSV, and RMC NMEA messages. Howeve
 First, identify the sections of the sentence you wish to record/parse and create an appropriate private variable in NMEAParser.hpp.<br>
 If you wish to access these variables, you should add a "get" method in NMEAParser.hpp:
 ```c++
-inline <variabletype> get<descriptionofvariable>() {return <variablename>;}
+inline [variabletype] get[descriptionofvariable]() {return [variablename];}
 ```
-Replace <code><variabletype></cpde> with the type that <variablename> was declared with. <code><descriptionofvariable></code> should be replaced with a short, meaningful explanation of what the get function retrieves (e.g. for accessing the private <code>\_altitude</code> variable, the method getAltitude() is provided).<br>
+Replace <code>[variabletype]</code> with the type that [variablename] was declared with. <code>[descriptionofvariable]</code> should be replaced with a short, meaningful explanation of what the get function retrieves (e.g. for accessing the private <code>\_altitude</code> variable, the method getAltitude() is provided).<br>
 In addition to variables for each sentence, some functionality must be added to parse the new sentence type.<br>
 In each of the three sections of <code>\_log_sentence</code>, there is space indicated by a comment <code>// Add [section functionality] for additional NMEA sentences here</code>.<br>
 
 For the first section (identification of sentence type), simply add the following code:
 ```c++
 else if (!\_termcmp(title, \_GP<ID>\_TERM))
-    sentence_type = NMEA_<ID>;
+    sentence_type = NMEA_[ID];
 ```
-Replace <code><ID></code> with the name of the NMEA sentence you wish to add functionality for.
+Replace <code>[ID]</code> with the name of the NMEA sentence you wish to add functionality for.
 
 For the second section (verification of sentence validity), add this:
 ```c++
-case NMEA_<ID>:
+case NMEA_[ID]:
     // verification code
     break;
 ```
-Replace <code><ID></code> with the name of the NMEA sentence you wish to add functionality for, and add code to verify validity. If the sentence has no validity indicator like GSV or ZDA, set <code>data_valid</code> to true.
+Replace <code>[ID]</code> with the name of the NMEA sentence you wish to add functionality for, and add code to verify validity. If the sentence has no validity indicator like GSV or ZDA, set <code>data_valid</code> to true.
 
 For the third section (parsing/decoding of sentence data), add the following:
 ```c++
-case NMEA_RMC:
+case NMEA_[ID]:
     switch (term_number)
     {
         case 0: // first term in the NMEA sentence after the sentence name/title ($GPGGA, $GPGSA, etc.)
@@ -290,6 +290,7 @@ case NMEA_RMC:
     }
     break;
 ```
+Replace <code>[ID]</code> with the name of the NMEA sentence you wish to decode.<br>
 <code>p</code> points to the starting character of the term currently being decoded.
 Take, for example, the sentence <code>$GPGSA,A,3,01,13,28,07,11,17,15,30,,,,,2.0,1.2,1.6*3B</code>.
 Entering the <code>switch (term_number)</code> statement, with <code>term_number</code> equal to 0 (i.e. the first term after the sentence title), <code>\*p</code> would be equal to 'A'.<br>
