@@ -134,10 +134,13 @@ char Venus838::cfgPowerSave(bool enable, char attribute)
     return _sendCommand(0x0C, messagebody, 2);
 }
 
-// Attribute:
+// Mode:
 // 0 = off
 // 1 = on only when 3D fix
 // 2 = on when at least 1 SV
+// Attribute:
+// 0 = only update RAM
+// 1 = update RAM and flash
 char Venus838::cfgPPS(char mode, char attribute)
 {
     _debug("Configuring 1PPS output\n");
