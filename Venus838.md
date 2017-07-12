@@ -74,3 +74,14 @@ Returns <code>\_serial.available();</code>
 
 Wrapper method for private \_serial object.<br>
 Returns <code>\_serial.read();</code>
+
+
+## Private Methods
+
+#### int \_getBaudRate();
+#### char \_sendCommand(char messageid, char \*messagebody, int bodylen);
+#### char \_sendCommand(char messageid, char \*messagebody, int bodylen, uint timemout);
+#### char \_sendPacket(char \*packet, int size, uint timeout);   
+#### void \_printPacket(char \*packet, int size);
+#### void \_debug(const char \*message);
+#### void \_debug(int number);

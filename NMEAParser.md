@@ -174,3 +174,123 @@ $GPZDA,165204.997712,07,07,2017,00,00*65
 ```
 
 ## Parsing
+
+The parsing library parses NMEA data one sentence at a time. It identifies the type of message and then stores (using private fields) the data encoded in the message.
+
+### Public Methods
+
+#### bool encode(char c);
+
+The encode method is the library's primary method for parsing NMEA data. It records chars until it reaches a newline ('\\n') character, in which case it verifies the sentence's checksum and calls <code>\_log_sentence</code>.<br>
+<code>c</code> is a character read directly from the serial port<br>
+
+Sample code
+```c++
+NMEAParser parser; // object initialization
+...
+bool newdata = false;
+char c;
+while (Serial.available())
+{
+    c = Serial.read();
+    newdata = parser.encode(c); // sets newdata to true if a valid sentence has been completed
+}
+```
+
+#### Accessor Methods (for private fields)
+###### unsigned long getTime() {return \_time;}
+###### unsigned short getDate() {return \_date;}
+###### long getLatitude() {return \_latitude;}
+###### long getLongitude() {return \_longitude;}
+###### long getAltitude() {return \_altitude;}
+###### unsigned short getPDOP() {return \_pdop;}
+###### unsigned short getVDOP() {return \_vdop;}
+###### unsigned short getHDOP() {return \_hdop;}
+###### unsigned char getNSats() {return \_numsats;}
+###### unsigned char getFixQuality() {return \_fixquality;}
+###### unsigned char getFixType() {return \_fixtype;}
+###### unsigned long getSpeed() {return \_speed;}
+###### unsigned short getCourse() {return \_course;}
+###### unsigned long timeAge() {return \_last_time_fix;}
+###### unsigned long positionAge() {return \_last_position_fix;}
+###### unsigned char getNSatsVisible() {return \_numsats_visible;}
+###### unsigned long getSNR() {return \_snr_avg;}
+###### unsigned char getNSNR() {return \_snr_count;}
+
+### Private Methods
+
+#### int \_termcmp(const char \*str1, const char \*str2);
+
+A copy of <string.h>'s strcmp.
+
+#### int \_hexToInt(char hex);
+
+Converts hex-formatted <code>hex</code> to an integer.
+
+#### long \_parse_decimal(char \*p);
+
+Parses a decimal string (with an optional decimal point) into a signed long.<br>
+<code>p</code> is a pointer to the start of the decimal string.<br>
+The returned <code>long</code> is equal to 100 times the number represented by the string, i.e.<br>
+<code>\_parse_decimal("102.136");</code> would return 10213 (note that digits past the 100ths place are truncated).
+
+#### long \_parse_degrees(char \*p);
+
+Similar to <code>\_parse_decimal(char \*p)</code>, this method parses a string of numbers.
+However, it expects a numeric string encoded as ddmm.mm (or dddmm.mm), where d is degrees, and m is minutes (1/60 of a degree).<br>
+The returned <code>long</code> is equal to the __decimal__** form (ie. dd.dd), in millionths of a degree.
+
+#### bool \_log_sentence();
+
+This method is used by <code>encode</code> to parse full sentences. It is called each time <code>encode</code> receives a newline character ('\\n').<br>
+First, <code>\_log_sentence</code> records the time it was called (using <code>millis()</code>). This time is used for NMEA strings which report position or time to allow the user to determine the age of such measurements when requesting them.<br>
+Next, the type of sentence is determined (<code>NMEA_GGA</code>, <code>NMEA_GSA</code>, <code>NMEA_GSV</code>, etc.). If the type is unknown, then <code>\_log_sentence</code> will exit early, returning false.<br>
+The validity of each sentence is then verified (if possible; some sentences do not have validity or quality fields). If the validity test fails, then the method exits early and returns false.<br>
+Finally, the data in the sentence is decoded and recorded in each sentence type's private variables.
+
+
+## Extending Parsing Functionality
+
+Currently, NMEAParser only supports GGA, GSA, GSV, and RMC NMEA messages. However, it is relatively simple to add functionality for additional messages.<br>
+First, identify the sections of the sentence you wish to record/parse and create an appropriate private variable in NMEAParser.hpp.<br>
+If you wish to access these variables, you should add a "get" method in NMEAParser.hpp:
+```c++
+inline <variabletype> get<descriptionofvariable>() {return <variablename>;}
+```
+Replace <code><variabletype></cpde> with the type that <variablename> was declared with. <code><descriptionofvariable></code> should be replaced with a short, meaningful explanation of what the get function retrieves (e.g. for accessing the private <code>\_altitude</code> variable, the method getAltitude() is provided).<br>
+In addition to variables for each sentence, some functionality must be added to parse the new sentence type.<br>
+In each of the three sections of <code>\_log_sentence</code>, there is space indicated by a comment <code>// Add [section functionality] for additional NMEA sentences here</code>.<br>
+
+For the first section (identification of sentence type), simply add the following code:
+```c++
+else if (!\_termcmp(title, \_GP<ID>\_TERM))
+    sentence_type = NMEA_<ID>;
+```
+Replace <code><ID></code> with the name of the NMEA sentence you wish to add functionality for.
+
+For the second section (verification of sentence validity), add this:
+```c++
+case NMEA_<ID>:
+    // verification code
+    break;
+```
+Replace <code><ID></code> with the name of the NMEA sentence you wish to add functionality for, and add code to verify validity. If the sentence has no validity indicator like GSV or ZDA, set <code>data_valid</code> to true.
+
+For the third section (parsing/decoding of sentence data), add the following:
+```c++
+case NMEA_RMC:
+    switch (term_number)
+    {
+        case 0: // first term in the NMEA sentence after the sentence name/title ($GPGGA, $GPGSA, etc.)
+            // assign value to private sentence variable declared in NMEAParser.hpp
+            break;
+        ...
+        case n:
+            break;
+    }
+    break;
+```
+<code>p</code> points to the starting character of the term currently being decoded.
+Take, for example, the sentence <code>$GPGSA,A,3,01,13,28,07,11,17,15,30,,,,,2.0,1.2,1.6*3B</code>.
+Entering the <code>switch (term_number)</code> statement, with <code>term_number</code> equal to 0 (i.e. the first term after the sentence title), <code>\*p</code> would be equal to 'A'.<br>
+Entering the switch statement with <code>term_number</code> equal to 1, <code>\*p</code> would be equal to '3'.<br>
