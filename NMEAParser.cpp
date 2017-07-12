@@ -125,7 +125,7 @@ bool NMEAParser::_log_sentence()
     if (!data_valid)
         return false;
 
-    while (*p++ != ',') ;
+    while (*p++ != ',') ; //advance to first term after sentence id/title
 
     // decode data
     int term_number = 0;
