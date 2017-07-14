@@ -55,6 +55,8 @@ bool NMEAParser::encode(char c)
             {
                 new_data = _log_sentence();
             }
+            _char_offset = 0;
+            _sentence[0] = 0;
         }
     }
     else
@@ -244,7 +246,7 @@ bool NMEAParser::_log_sentence()
                         _course = _parse_decimal(p);
                         break;
                     case 8: // UTC Date
-                        _date = _parse_decimal(p);
+                        _date = _parse_decimal(p) / 100;
                         break;
                 }
                 break;
@@ -308,7 +310,7 @@ long NMEAParser::_parse_degrees(char *p)
     long deg = 0L;
     while ((*(p + 2) != '.') && (*p >= '0' && *p <= '9'))
         deg = deg * 10L + *p++ - '0';
-    deg *= 100000L;
+    deg *= 10000000L;
     long min = (*p++ - '0') * 10;
     min += *p++ - '0';
     p++;

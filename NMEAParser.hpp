@@ -10,7 +10,7 @@
 #include "Arduino.h"
 #include "Venus838.hpp"
 
-#ifndef "Venus838_h"
+#ifndef Venus838_h
 #define NMEA_GGA 0
 #define NMEA_GSA 1
 #define NMEA_GSV 2
@@ -81,8 +81,8 @@ private:
 
     // GGA Variables
     unsigned long   _time; // UTC time in hundredths of a second
-    long            _latitude; // latitude in hundred thousandths of a degree
-    long            _longitude; // longitude in hundred thousandths of a degree
+    long            _latitude; // latitude in ten millionths of a degree
+    long            _longitude; // longitude in ten millionths of a degree
     unsigned char   _fixquality;
     unsigned char   _numsats; // number of satellites used for fix
     unsigned short  _hdop; // horizontal dilution of position (scaled by 100, i.e. 120 corresponds to a dop of 1.2)
