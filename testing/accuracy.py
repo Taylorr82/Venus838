@@ -8,8 +8,9 @@ import sys
 
 baudrate = 9600
 confidence = 0.95
-experiment_size = 5
-experiment_count = 5
+
+setup_packet_count = 2500
+measurement_packet_count = 1200
 
 try:
     devices = [device for device in listdir("/dev/serial/by-id")]
@@ -32,96 +33,60 @@ port = "".join([mask * name for mask, name in zip(["Teensy" in device for device
 
 ser = serial.Serial(port, baudrate)
 
-lat_list = []
-lon_list = []
+true_lat = 0
+true_lon = 0
+true_alt = 0
 
-for i in range(5000):
+raw_input("Measuring true location, please ensure the antenna is stationary.\nPress enter to continue")
+
+for i in range(1, setup_packet_count + 1):
+    sys.stdout.write('\r[{0}] {1}%'.format('#' * (i * 50 / setup_packet_count), i * 100 / setup_packet_count))
+    sys.stdout.flush()
     msg = ser.readline().strip().split(',')
-    print "Message", i, ', '.join(msg)
-    lat_list.append(msg[1])
-    lon_list.append(msg[2])
+    true_lat = (true_lat * (i - 1) + int(msg[1])) / i
+    true_lon = (true_lon * (i - 1) + int(msg[2])) / i
+    true_alt = (true_alt * (i - 1) + int(msg[3])) / i
 
+print "\nTrue location =", true_lat / 10000000.0, ",", true_lon / 10000000.0, ",", true_alt / 100.0
 
-plt.scatter(lat_list, lon_list)
+raw_input("Leaving the antenna in the same location, rotate it slowly about each axis.\nPress enter to continue")
+
+lat_err_list = []
+lon_err_list = []
+alt_err_list = []
+pdop_list = []
+snr_list = []
+snrpdop_list = []
+
+for i in range(measurement_packet_count):
+    sys.stdout.write('\r[{0}] {1}%'.format('#' * (i * 50 / measurement_packet_count), i * 100 / measurement_packet_count))
+    sys.stdout.flush()
+    msg = ser.readline().strip().split(',')
+    lat_err_list.append((int(msg[1]) - true_lat) ** 2)
+    lon_err_list.append((int(msg[2]) - true_lon) ** 2)
+    alt_err_list.append((int(msg[3]) - true_alt) ** 2)
+    pdop_list.append(int(msg[4]))
+    snr_list.append(int(msg[9]))
+    snrpdop_list.append(int(msg[4]) * int(msg[9]))
+
+f, ((lt_v_sp, lt_v_p, lt_v_s), (ln_v_sp, ln_v_p, ln_v_s), (at_v_sp, at_v_p, at_v_s)) = plt.subplots(3, 3, sharex='col', sharey='row')
+
+lt_v_sp.scatter(snrpdop_list, lat_err_list)
+lt_v_sp.set_title('Latitude vs. SNR * PDOP')
+lt_v_p.scatter(pdop_list, lat_err_list)
+lt_v_p.set_title('Latitude vs. PDOP')
+lt_v_s.scatter(snr_list, lat_err_list)
+lt_v_s.set_title('Latitude vs. SNR')
+ln_v_sp.scatter(snrpdop_list, lon_err_list)
+ln_v_sp.set_title('Longitude vs. SNR * PDOP')
+ln_v_p.scatter(pdop_list, lon_err_list)
+ln_v_p.set_title('Longitude vs. PDOP')
+ln_v_s.scatter(snr_list, lon_err_list)
+ln_v_s.set_title('Longitude vs. SNR')
+at_v_sp.scatter(snrpdop_list, alt_err_list)
+at_v_sp.set_title('Altitude vs. SNR * PDOP')
+at_v_p.scatter(pdop_list, alt_err_list)
+at_v_p.set_title('Altitude vs. PDOP')
+at_v_s.scatter(snr_list, alt_err_list)
+at_v_s.set_title('Altitude vs. SNR')
 plt.show()
-
-'''ME_lat_list = []
-ME_lon_list = []
-ME_alt_list = []
-PDOP_bar_list = []
-SNR_bar_list = []
-
-for experiment in range(experiment_count):
-
-    lat_list = []
-    lon_list = []
-    alt_list = []
-    pdop_list = []
-    snr_list = []
-
-    for n in range(0, experiment_size):
-            msg = ser.readline().strip().split(',')
-            print ', '.join(msg)
-            lat = int(msg[1])
-            lon = int(msg[2])
-            alt = int(msg[3])
-            pdop = int(msg[4])
-            snr = int(msg[9])
-
-            lat_list.append(lat)
-            lon_list.append(lon)
-            alt_list.append(alt)
-            pdop_list.append(pdop)
-            snr_list.append(snr)
-
-    lat_bar = sum(lat_list) / experiment_size
-    lon_bar = sum(lon_list) / experiment_size
-    alt_bar = sum(alt_list) / experiment_size
-    pdop_bar = sum(pdop_list) / experiment_size
-    snr_bar = sum(snr_list) / experiment_size
-
-    t_critical = t.ppf(1 - (1 - confidence) / 2, experiment_size - 1)
-
-    # ME = t_crit * std_dev / sqrt(n)
-    ME_lat = t_critical * 1000000 * math.sqrt(sum([(lat - lat_bar) ** 2 for lat in lat_list]) / ((experiment_size - 1) * experiment_size))
-    ME_lon = t_critical * 1000000 * math.sqrt(sum([(lon - lon_bar) ** 2 for lon in lon_list]) / ((experiment_size - 1) * experiment_size))
-    ME_alt = t_critical * 1000000 * math.sqrt(sum([(alt - alt_bar) ** 2 for alt in alt_list]) / ((experiment_size - 1) * experiment_size))
-
-    ME_lat_list.append(ME_lat)
-    ME_lon_list.append(ME_lon)
-    ME_alt_list.append(ME_alt)
-    PDOP_bar_list.append(pdop_bar)
-    SNR_bar_list.append(snr_bar)
-
-    x = raw_input("Experiment " + str(experiment) + " complete,\nPlease move the GPS antenna or change its attitude for additional experiments.\nPress Enter to continue")
-
-    ser.flushInput()
-
-plt.close('all')
-
-f, ((lat__snr_pdop, lat__pdop, lat__snr), (lon__snr_pdop, lon__pdop, lon__snr), (lat__snr_pdop, lat__pdop, lat__snr)) = plt.subplots(3, 3, sharex='col', sharey='row')
-
-snr_pdop_prod = [snr * pdop for snr, pdop in zip(SNR_bar_list, PDOP_bar_list)]
-
-lat__snr_pdop.scatter(snr_pdop_prod, ME_lat_list)
-lat__snr_pdop.set_title('latitude vs. SNR * PDOP')
-lat__pdop.scatter(PDOP_bar_list, ME_lat_list)
-lat__pdop.set_title('latitude vs. PDOP')
-lat__snr.scatter(SNR_bar_list, ME_lat_list)
-lat__snr.set_title('latitude vs. SNR')
-
-lon__snr_pdop.scatter(snr_pdop_prod, ME_lon_list)
-lon__snr_pdop.set_title('Longitude vs. SNR * PDOP')
-lon__pdop.scatter(PDOP_bar_list, ME_lon_list)
-lon__pdop.set_title('Longitude vs. PDOP')
-lon__snr.scatter(SNR_bar_list, ME_lon_list)
-lon__snr.set_title('Longitude vs. SNR')
-
-alt__snr_pdop.scatter(snr_pdop_prod, ME_alt_list)
-alt__snr_pdop.set_title('Altitude vs. SNR * PDOP')
-alt__pdop.scatter(PDOP_bar_list, ME_alt_list)
-alt__pdop.set_title('Altitude vs. PDOP')
-alt__snr.scatter(SNR_bar_list, ME_alt_list)
-alt__snr.set_title('Altitude vs. SNR')
-
-plt.show()'''
