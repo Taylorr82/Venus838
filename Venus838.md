@@ -23,7 +23,7 @@ Returns <code>GPS_INVALIDARG</code> if <code>baudrate</code> is not valid.<br>
 #### char setUpdateRate(int frequency, char attribute);
 
 Set the position update rate of the GPS receiver (how frequently it sends out NMEA sentences).<br>
-<code>frequency</code> determines the update rate.<br>
+<code>frequency</code> determines the update rate (1Hz, 2Hz, 4Hz, 5Hz, 8Hz, 10Hz, 20Hz). Higher frequencies require higher baud rates; 4-10Hz requires 38400 baud and 20Hz requires 115200 baud<br>
 <code>attribute</code> 0 = update RAM only, 1 = update both RAM and flash.
 
 #### char resetReceiver(bool reboot);
@@ -67,21 +67,43 @@ Configure the function of the 1PPS (pulse-per-second) pin.<br>
 
 #### bool available();
 
-Wrapper method for private \_serial object.<br>
-Returns <code>\_serial.available();</code>
+Wrapper method for private <code>\_gpsSerial</code> object.<br>
+Returns <code>\_gpsSerial.available();</code>
 
 #### char read();
 
-Wrapper method for private \_serial object.<br>
-Returns <code>\_serial.read();</code>
+Wrapper method for private <code>\_gpsSerial</code> object.<br>
+Returns <code>\_gpsSerial.read();</code>
 
 
 ## Private Methods
 
 #### int \_getBaudRate();
+
+Auto-detects the current baud rate of the GPS receiver by querying its software version and waiting for an ACK with various different baud rates.
+Returns the integer baud rate of the GPS receiver.
+
 #### char \_sendCommand(char messageid, char \*messagebody, int bodylen);
+
+Send command with the default timeout.<br>
+See <code>\_sendCommand(char messageid, char \*messagebody, int bodylen, uint timemout)</code> for more information on the <code>\_sendCommand</code> method.
+
 #### char \_sendCommand(char messageid, char \*messagebody, int bodylen, uint timemout);
-#### char \_sendPacket(char \*packet, int size, uint timeout);   
+
+Assembles a command packet, sends it (using <code>\_sendPacket</code>), returns result from <code>\_sendPacket</code>.<br>
+
+#### char \_sendPacket(char \*packet, int size, uint timeout);
+
+Writes packet to <code>\_gpsSerial</code> and waits for a response or timeout.
+
 #### void \_printPacket(char \*packet, int size);
+
+Debug method, uses <code>Serial</code> to print the provided packet (in hex).
+
 #### void \_debug(const char \*message);
+
+Debug method, wrapper for <code>Serial.print</code>.
+
 #### void \_debug(int number);
+
+Debug method, wrapper for <code>Serial.println</code>.

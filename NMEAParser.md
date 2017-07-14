@@ -199,23 +199,41 @@ while (Serial.available())
 
 ### Accessor Methods (for private fields)
 #### unsigned long getTime() {return \_time;}
+Returns UTC time (hhmmssss).
 #### unsigned short getDate() {return \_date;}
+Returns UTC date.
 #### long getLatitude() {return \_latitude;}
+Returns latitude in ten millionths of a degree.
 #### long getLongitude() {return \_longitude;}
+Returns longitude in then millionths of a degree.
 #### long getAltitude() {return \_altitude;}
+Returns altitude in centimeters.
 #### unsigned short getPDOP() {return \_pdop;}
+Returns PDOP (positional dilution of precision) scaled by 100, i.e. 120 corresponds to a DOP of 1.2.
 #### unsigned short getVDOP() {return \_vdop;}
+Returns VDOP (vertical dilution of precision) also scaled by 100.
 #### unsigned short getHDOP() {return \_hdop;}
+Returns HDOP (horizontal dilution of precision) also scaled by 100.
 #### unsigned char getNSats() {return \_numsats;}
+Returns the number of satellites used for GPS fix.
 #### unsigned char getFixQuality() {return \_fixquality;}
+Returns the fix quality (0 = invalid, 1 = GPS fix (SPS), 2 = DGPS fix, 3 = PPS fix, 4 = Real Time Kinematic, 5 = Float RTK, 6 = estimated (dead reckoning) (2.3 feature), 7 = Manual input mode, 8 = Simulation mode).
 #### unsigned char getFixType() {return \_fixtype;}
+Returns the fix type (1 = no fix, 2 = 2D fix, 3 = 3D fix).
 #### unsigned long getSpeed() {return \_speed;}
+Returns the speed in decameters (dkm) per hour.
 #### unsigned short getCourse() {return \_course;}
+Returns the course in hundredths of a degree.
 #### unsigned long timeAge() {return \_last_time_fix;}
+Returns the age of time data (in milliseconds).
 #### unsigned long positionAge() {return \_last_position_fix;}
+Returns the age of position data (in milliseconds).
 #### unsigned char getNSatsVisible() {return \_numsats_visible;}
+Returns the number of visible satellites (likely more than the amount used for fix).
 #### unsigned long getSNR() {return \_snr_avg;}
+Returns the average Signal to Noise Ratio (C/No, in dB) of all satellites in view (multiplied by 100).
 #### unsigned char getNSNR() {return \_snr_count;}
+Returns the number of satellites that have a valid SNR.
 
 ### Private Methods
 
