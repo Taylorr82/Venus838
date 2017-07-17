@@ -202,10 +202,10 @@ while (Serial.available())
 Returns UTC time (hhmmssss).
 #### unsigned short getDate() {return \_date;}
 Returns UTC date.
-#### long getLatitude() {return \_latitude;}
-Returns latitude in ten millionths of a degree.
-#### long getLongitude() {return \_longitude;}
-Returns longitude in then millionths of a degree.
+#### void getLatitude(long \*upper, long \*lower) {\*upper = \_latitude_upper; \*lower = \_latitude_lower;}
+Stores the currently saved latitude into two longs (upper: integral part in degrees, lower: decimal part, in ten millionths of a degree)
+#### void getLongitude(long \*upper, long \*lower) {\*upper = \_longitude_upper; \*lower = \_longitude_lower;}
+Stores the currently saved longitude into two longs (upper: integral part in degrees, lower: decimal part, in ten millionths of a degree)
 #### long getAltitude() {return \_altitude;}
 Returns altitude in centimeters.
 #### unsigned short getPDOP() {return \_pdop;}
