@@ -11,8 +11,10 @@ NMEAParser::NMEAParser() :
     _char_offset(0),
 
     _time(GPS_INVALID_TIME),
-    _latitude(GPS_INVALID_ANGLE),
-    _longitude(GPS_INVALID_ANGLE),
+    _latitude_lower(GPS_INVALID_ANGLE),
+    _latitude_upper(GPS_INVALID_ANGLE),
+    _longitude_lower(GPS_INVALID_ANGLE),
+    _longitude_upper(GPS_INVALID_ANGLE),
     _fixquality(-1),
     _numsats(GPS_INVALID_SATELLITES),
     _hdop(GPS_INVALID_DOP),
@@ -145,16 +147,16 @@ bool NMEAParser::_log_sentence()
                         break;
                     case 1: // Latitude
                         _last_position_fix = logtime;
-                        _latitude = _parse_degrees(p);
+                        _parse_degrees(p, &_latitude_upper, &_latitude_lower);
                         break;
                     case 2: // Latitude Indicator
-                        _latitude = *p == 'S' ? -_latitude : _latitude;
+                        _latitude_upper = *p == 'S' ? -_latitude_upper : _latitude_upper;
                         break;
                     case 3: // Longitude
-                        _longitude = _parse_degrees(p);
+                        _parse_degrees(p, &_longitude_upper, &_longitude_lower);
                         break;
                     case 4: // Longitude Indicator
-                        _longitude = *p == 'W' ? -_longitude : _longitude;
+                        _longitude_upper = *p == 'W' ? -_longitude_upper : _longitude_upper;
                         break;
                     case 5: // Fix Quality
                         _fixquality = *p - '0';
@@ -228,16 +230,16 @@ bool NMEAParser::_log_sentence()
                         break;
                     case 2: // Latitude
                         _last_position_fix = logtime;
-                        _latitude = _parse_degrees(p);
+                        _parse_degrees(p, &_latitude_upper, &_latitude_lower);
                         break;
                     case 3: // Latitude Indicator
-                        _latitude = *p == 'S' ? -_latitude : _latitude;
+                        _latitude_upper = *p == 'S' ? -_latitude_upper : _latitude_upper;
                         break;
                     case 4: // Longitude
-                        _longitude = _parse_degrees(p);
+                        _parse_degrees(p, &_longitude_upper, &_longitude_lower);
                         break;
                     case 5: // Longitude Indicator
-                        _longitude = *p == 'W' ? -_longitude : _longitude;
+                        _longitude_upper = *p == 'W' ? -_longitude_upper : _longitude_upper;
                         break;
                     case 6: // Speed
                         _speed = _parse_decimal(p);
@@ -305,17 +307,20 @@ long NMEAParser::_parse_decimal(char *p)
     return neg ? -ret : ret;
 }
 
-long NMEAParser::_parse_degrees(char *p)
+void NMEAParser::_parse_degrees(char *p, long *upper, long *lower)
 {
     long deg = 0L;
     while ((*(p + 2) != '.') && (*p >= '0' && *p <= '9'))
         deg = deg * 10L + *p++ - '0';
-    deg *= 10000000L;
+    *upper = deg;
+
     long min = (*p++ - '0') * 10;
     min += *p++ - '0';
     p++;
     while ((*p >= '0' && *p <= '9'))
         min = min * 10L + *p++ - '0';
-    deg += min / 6;
-    return deg;
+
+    min *= 100L;
+
+    *lower = min / 6;
 }

@@ -43,8 +43,10 @@ void loop()
     if (newdata)
     {
         long utctime = parser.getTime();
-        long latitude = parser.getLatitude();
-        long longitude = parser.getLongitude();
+        long latitude_u, latitude_l;
+        parser.getLatitude(&latitude_u, &latitude_l);
+        long longitude_u, longitude_l;
+        parser.getLongitude(&longitude_u, &longitude_l);
         long altitude = parser.getAltitude();
         short pdop = parser.getPDOP();
         short hdop = parser.getHDOP();
@@ -52,6 +54,6 @@ void loop()
         char numsats = parser.getNSats();
         char numsatsvisible = parser.getNSatsVisible();
         long snravg = parser.getSNR();
-        Serial.printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", utctime, latitude, longitude, altitude, pdop, hdop, vdop, numsats, numsatsvisible, snravg);
+        Serial.printf("%d,%d.%07d,%d.%07d,%d,%d,%d,%d,%d,%d,%d\n", utctime, latitude_u, latitude_l, longitude_u, longitude_l, altitude, pdop, hdop, vdop, numsats, numsatsvisible, snravg);
     }
 }

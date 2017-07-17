@@ -43,8 +43,8 @@ public:
 
     inline unsigned long getTime() {return _time;}
     inline unsigned short getDate() {return _date;}
-    inline long getLatitude() {return _latitude;}
-    inline long getLongitude() {return _longitude;}
+    inline void getLatitude(long *upper, long *lower) {*upper = _latitude_upper; *lower = _latitude_lower;}
+    inline void getLongitude(long *upper, long *lower) {*upper = _longitude_upper; *lower = _longitude_lower;}
     inline long getAltitude() {return _altitude;}
     inline unsigned short getPDOP() {return _pdop;}
     inline unsigned short getVDOP() {return _vdop;}
@@ -65,7 +65,7 @@ private:
     int _termcmp(const char *str1, const char *str2);
     int _hexToInt(char hex);
     long _parse_decimal(char *p);
-    long _parse_degrees(char *p);
+    void _parse_degrees(char *p, long *upper, long *lower);
     bool _log_sentence();
 
     char _sentence[NMEASENTENCE_MAXLENGTH];
@@ -81,8 +81,8 @@ private:
 
     // GGA Variables
     unsigned long   _time; // UTC time in hundredths of a second
-    long            _latitude; // latitude in ten millionths of a degree
-    long            _longitude; // longitude in ten millionths of a degree
+    long            _latitude_lower, _latitude_upper; // latitude in ten millionths of a degree
+    long            _longitude_lower, _longitude_upper; // longitude in ten millionths of a degree
     unsigned char   _fixquality;
     unsigned char   _numsats; // number of satellites used for fix
     unsigned short  _hdop; // horizontal dilution of position (scaled by 100, i.e. 120 corresponds to a dop of 1.2)
