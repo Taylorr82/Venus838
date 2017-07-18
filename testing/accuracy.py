@@ -1,31 +1,16 @@
 import math
-import matplotlib.pyplot as plt
-from scipy import stats
+from sklearn import linear_model
+import numpy as np
+from pandas.plotting import scatter_matrix
+import pandas as pd
 import serial
 import glob
 from os import listdir
 import sys
-import time
-
-# According to UTDallas paper
-#
-# accuracy = sqrt(var(actual_range_err)) * GDOP
-#
-#        sqrt(var(lat) + var(lon) + var(alt) + (c*dt)^2)
-# GDOP = -----------------------------------------------
-#                      sqrt(var(range))
-#
-# PDOP = sqrt(var(lat) + var(lon) + var(alt)) / actual_range_err
-# HDOP = sqrt(var(lat) + var(lon)) / actual_range_err
-# VDOP = sqrt(var(alt)) / actual_range_err
-#
 
 baudrate = 9600
-confidence = 0.95
-
-setup_packet_count = 100
-measurement_packet_count = 40
-super_sample_size = 10
+sample_size = 50
+samples = 100
 
 try:
     devices = [device for device in listdir("/dev/serial/by-id")]
@@ -48,111 +33,99 @@ port = "".join([mask * name for mask, name in zip(["Teensy" in device for device
 
 ser = serial.Serial(port, baudrate)
 
-true_lat = 0
-true_lon = 0
-true_alt = 0
+# Telemetry will be stored in an array
+training_data = []
+expected_outputs = []
 
-raw_input("Measuring true location, please ensure the antenna is stationary.\nPress enter to continue")
+raw_input("Preparing to collect training data and expected outputs, please ensure the antenna is stationary.\nPress enter to continue ... ")
 
-for i in range(1, setup_packet_count + 1):
-    sys.stdout.write('\r[{0}] {1}%'.format('=' * (i * 50 / setup_packet_count), i * 100 / setup_packet_count))
-    sys.stdout.flush()
+while True:
     msg = ser.readline().strip().split(',')
-    true_lat = (true_lat * (i - 1) + float(msg[1])) / i
-    true_lon = (true_lon * (i - 1) + float(msg[2])) / i
-    true_alt = (true_alt * (i - 1) + float(msg[3])) / i
+    if msg[0] != "999999999.999999999": #wait until there is valid position data
+        break
 
-print "\nTrue location =", true_lat, ",", true_lon, ",", true_alt / 100.0
+new_mean = lambda old_mean, new_value, total: old_mean + (float(new_value) - old_mean) / total
 
-raw_input("Leaving the antenna in the same location, rotate it slowly about each axis.\nPress enter to continue")
+for i in xrange(samples):
 
+    pvar_lat = 0
+    mean_lat = 0
+    pvar_lon = 0
+    mean_lon = 0
+    pvar_alt = 0
+    mean_alt = 0
 
-def mean(sample):
-    return sum(sample)/len(sample)
+    mean_pdop = 0
+    mean_hdop = 0
+    mean_vdop = 0
+    mean_numsats = 0
+    mean_numsatsvisible = 0
+    mean_snr = 0
+    mean_nsnr = 0
 
-def std_dev(sample, mean):
-    return math.sqrt((1.0 / (len(sample) - 1)) * sum([(x - mean) ** 2 for x in sample]))
-
-def var(sample, mean):
-    return (1.0 / (len(sample) - 1)) * sum([(x - mean) ** 2 for x in sample])
-
-rss_latlonalt = []
-rss_latlon = []
-rss_alt = []
-err_list = []
-pdop_list = []
-hdop_list = []
-vdop_list = []
-snr_list = []
-
-for i in range(measurement_packet_count):
-    sys.stdout.write('\r[{0}] {1}%'.format('=' * (i * 50 / measurement_packet_count), i * 100 / measurement_packet_count))
-    sys.stdout.flush()
-    lat = []
-    lon = []
-    alt = []
-    pdop = []
-    hdop = []
-    vdop = []
-    snr = []
-    for j in range(super_sample_size):
+    for n in xrange(1, sample_size + 1):
+        sys.stdout.write('\rExperiment {0} Progress: {1}% [{2}]'.format(i + 1, n * 100 / sample_size, '=' * (n * 50 / sample_size)))
+        sys.stdout.flush()
         msg = ser.readline().strip().split(',')
-        lat.append(float(msg[1]))
-        lon.append(float(msg[2]))
-        alt.append(float(msg[3]))
-        pdop.append(float(msg[4]))
-        hdop.append(float(msg[5]))
-        vdop.append(float(msg[6]))
-        snr.append(float(msg[9]))
+        mean_pdop = new_mean(mean_pdop, float(msg[3]) / 100.0, n)
+        mean_hdop = new_mean(mean_hdop, float(msg[4]) / 100.0, n)
+        mean_vdop = new_mean(mean_vdop, float(msg[5]) / 100.0, n)
+        mean_numsats = new_mean(mean_numsats, msg[6], n)
+        mean_numsatsvisible = new_mean(mean_numsatsvisible, msg[7], n)
+        mean_snr = new_mean(mean_snr, msg[8], n)
+        mean_nsnr = new_mean(mean_nsnr, msg[9], n)
 
-    rss_latlonalt.append(math.sqrt(var(lat, true_lat) + var(lon, true_lon) + var(alt, true_alt)))
-    rss_latlon.append(math.sqrt(var(lat, true_lat) + var(lon, true_lon)))
-    rss_alt.append(std_dev(alt, true_alt))
+        lat = float(msg[0])
+        lon = float(msg[1])
+        alt = float(msg[2]) / 100.0
+        mean_lat_prev = mean_lat
+        mean_lon_prev = mean_lon
+        mean_alt_prev = mean_alt
 
-    pdop_list.append(sum(pdop) / super_sample_size)
-    hdop_list.append(sum(hdop) / super_sample_size)
-    vdop_list.append(sum(vdop) / super_sample_size)
+        mean_lat = new_mean(mean_lat, lat, n)
+        mean_lon = new_mean(mean_lon, lon, n)
+        mean_alt = new_mean(mean_alt, alt, n)
+        pvar_lat = pvar_alt + (lat - mean_lat) * (lat - mean_lat_prev)
+        pvar_lon = pvar_lon + (lon - mean_lon) * (lon - mean_lon_prev)
+        pvar_alt = pvar_alt + (alt - mean_alt) * (alt - mean_alt_prev)
 
-    err_list.append(1.122 * (std_dev(lat, true_lat) + std_dev(lon, true_lon) + std_dev(alt, true_alt)))
+    training_data.append([mean_pdop, mean_hdop, mean_vdop, mean_numsats, mean_numsatsvisible, mean_snr, mean_nsnr, mean_pdop / mean_snr, mean_hdop / mean_snr, mean_vdop / mean_snr])
+    expected_outputs.append(1.122 * (math.sqrt(pvar_lat / sample_size) + math.sqrt(pvar_lon / sample_size) + math.sqrt(pvar_alt / sample_size)))
 
-    snr_list.append(sum(snr) / super_sample_size)
+    raw_input("\nExperiment {0} Complete; please move to a new location.\nPress Enter to begin a new experiment.".format(i + 1))
+
+clf = linear_model.LinearRegression()
+x_ = np.array(training_data)
+y_ = np.array(expected_outputs)
+clf.fit(x_, y_)
+print ""
+print "r^2 =", clf.score(x_,y_)
+error_str = str(clf.intercept_) + " + " + str(clf.coef_[0]) + "*pdop + " + str(clf.coef_[1]) + "*hdop + " + str(clf.coef_[2]) + "*vdop + "
+error_str += str(clf.coef_[3]) + "*nsats + " + str(clf.coef_[4]) + "*nsatsvis + " + str(clf.coef_[5]) + "*snr + " + str(clf.coef_[6]) + "*nsnrsats + "
+error_str += str(clf.coef_[7]) + "*pdop/snr + " + str(clf.coef_[8]) + "*hdop/snr + " + str(clf.coef_[9]) + "*vdop/snr"
+print "position error ~ " + error_str
+print "mean squared residual error = " + str(np.mean((clf.predict(training_data) - expected_outputs) ** 2))
 
 
-def makeplot(x, y, axis, name):
-    slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
-    f = lambda x: slope * x + intercept
-    axis.plot((min(x), max(x)), (f(min(x)), f(max(x))), c="red")
-    axis.scatter(x, y)
-    axis.set_title(name + ' (r = ' + str(r_value) + ')')
+#print "Training Data:", training_data
+#print "Expected Outputs:", expected_outputs
 
-# error vs. sqrt(var(lat) + var(lon) + var(alt)) / pdop
-# error vs. sqrt(var(lat) + var(lon)) / hdop
-# error vs. sqrt(var(alt)) / vdop
+print "Average of Expected Outputs:", sum(expected_outputs)/len(expected_outputs)
 
-print "Error list:", err_list
-print "rss_latlonalt:", rss_latlonalt
-print "rss_latlon:", rss_latlon
-print "rss_alt:", rss_alt
-
-f, (err_v_latlonalt_pdop, err_v_latlon_hdop, err_v_alt_vdop) = plt.subplots(1, 3, sharey=True)
-makeplot(err_list, rss_latlonalt, err_v_latlonalt_pdop, "Error vs. rss(Lat, Lon, Alt)/PDOP")
-makeplot(err_list, rss_latlon, err_v_latlon_hdop, "Error vs. rss(Lat, Lon)/HDOP")
-makeplot(err_list, rss_alt, err_v_alt_vdop, "Error vs. rss(Alt)/VDOP")
-
-plt.show()
 
 '''
-f, ((lt_v_sp, lt_v_p, lt_v_s), (ln_v_sp, ln_v_p, ln_v_s), (at_v_sp, at_v_p, at_v_s)) = plt.subplots(3, 3, sharex='col', sharey='row')
+Best Model so far (probably is only accurate in the same location on the stairs)
+r^2 = 0.844873462104
+position error ~ 108.563753131 + -4.51047055041*pdop + 9.16937525521*hdop + 9.78784105119*vdop + 9.4089397195*nsats + 6.39488
+462184e-14*nsatsvis + -0.0524476990033*snr + -17.3488873339*nsnrsats
+mean squared error = 1.07971906724
+Average of Expected Outputs: 1.72019234181
 
-makeplot(snrpdop_list, lat_err_list, lt_v_sp, "Latitude vs. SNR / PDOP")
-makeplot(pdop_list, lat_err_list, lt_v_p, "Latitude vs. PDOP")
-makeplot(snr_list, lat_err_list, lt_v_s, "Latitude vs. SNR")
-
-makeplot(snrpdop_list, lon_err_list, ln_v_sp, "Longitude vs. SNR / PDOP")
-makeplot(pdop_list, lon_err_list, ln_v_p, "Longitude vs. PDOP")
-makeplot(snr_list, lon_err_list, ln_v_s, "Longitude vs. SNR")
-
-makeplot(snrpdop_list, alt_err_list, at_v_sp, "Altitude vs. SNR / PDOP")
-makeplot(pdop_list, alt_err_list, at_v_p, "Altitude vs. PDOP")
-makeplot(snr_list, alt_err_list, at_v_s, "Altitude vs. SNR")
+another model (poor accuracy)
+r^2 = 1.0
+position error ~ -8116.8042914 + -383.250083143*pdop + -3121.80865776*hdop + 379.392802833*vdop + -497.791074802*nsats + -1.2
+2271894725e-05*nsatsvis + 3.26136477417*snr + -212.207171387*nsnrsats + 1761963.90775*pdop/snr + 9455269.83931*hdop/snr + -12
+77396.54818*vdop/snr
+mean squared residual error = 7.43505608246e-20
+Average of Expected Outputs: 321.023412359
 '''
