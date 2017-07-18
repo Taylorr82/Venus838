@@ -224,16 +224,14 @@ Returns the fix type (1 = no fix, 2 = 2D fix, 3 = 3D fix).
 Returns the speed in decameters (dkm) per hour.
 #### unsigned short getCourse() {return \_course;}
 Returns the course in hundredths of a degree.
-#### unsigned long timeAge() {return \_last_time_fix;}
+#### unsigned long timeAge() {return millis() - \_last_time_fix;}
 Returns the age of time data (in milliseconds).
-#### unsigned long positionAge() {return \_last_position_fix;}
+#### unsigned long positionAge() {return millis() - \_last_position_fix;}
 Returns the age of position data (in milliseconds).
 #### unsigned char getNSatsVisible() {return \_numsats_visible;}
 Returns the number of visible satellites (likely more than the amount used for fix).
 #### unsigned long getSNR() {return \_snr_avg;}
 Returns the average Signal to Noise Ratio (C/No, in dB) of all satellites in view (multiplied by 100).
-#### unsigned char getNSNR() {return \_snr_count;}
-Returns the number of satellites that have a valid SNR.
 
 ### Private Methods
 
