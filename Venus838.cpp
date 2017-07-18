@@ -157,15 +157,16 @@ char Venus838::cfgPPS(char mode, char attribute)
 char Venus838::cfgNMEA(char nmeabyte, char attribute)
 {
     _debug("Configuring all NMEA strings\n");
+    _nmeastate = nmeabyte;
     char messagebody[8];
     memset(messagebody, 0, 8);
-    messagebody[0] = (nmeabyte >> NMEA_GGA) & 1;
-    messagebody[1] = (nmeabyte >> NMEA_GSA) & 1;
-    messagebody[2] = (nmeabyte >> NMEA_GSV) & 1;
-    messagebody[3] = (nmeabyte >> NMEA_GLL) & 1;
-    messagebody[4] = (nmeabyte >> NMEA_RMC) & 1;
-    messagebody[5] = (nmeabyte >> NMEA_VTG) & 1;
-    messagebody[6] = (nmeabyte >> NMEA_ZDA) & 1;
+    messagebody[1] = (_nmeastate >> NMEA_GSA) & 1;
+    messagebody[0] = (_nmeastate >> NMEA_GGA) & 1;
+    messagebody[2] = (_nmeastate >> NMEA_GSV) & 1;
+    messagebody[3] = (_nmeastate >> NMEA_GLL) & 1;
+    messagebody[4] = (_nmeastate >> NMEA_RMC) & 1;
+    messagebody[5] = (_nmeastate >> NMEA_VTG) & 1;
+    messagebody[6] = (_nmeastate >> NMEA_ZDA) & 1;
     messagebody[7] = attribute;
     return _sendCommand(0x08, messagebody, 8);
 }
