@@ -107,3 +107,20 @@ Debug method, wrapper for <code>Serial.print</code>.
 #### void \_debug(int number);
 
 Debug method, wrapper for <code>Serial.println</code>.
+
+## Extending Venus838
+
+Additional information on the configuration of the GPS receiver can be found [here](https://cdn.sparkfun.com/datasheets/Sensors/GPS/Venus/638/doc/AN0003_v1.4.19.pdf)
+
+### Adding Configuration Methods
+
+Each configuration method follows a similar structure, it prints a statement (using <code>\_debug</code>) that indicates it has been called.<br>
+Next, an array is allocated for storing the body of the message.<br>
+<code>messagebody</code> is then filled with command data specific to the command.<br>
+Finally, the command is actually sent using <code>\_sendCommand</code>.
+```c++
+char messagebody[sizeofmessage];
+memset(messagebody, 0, sizeofmessage);
+// initialize messagebody
+return _sendCommand(messageid, messagebody, sizeofmessage);
+```
