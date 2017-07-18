@@ -54,11 +54,10 @@ public:
     inline unsigned char getFixType() {return _fixtype;}
     inline unsigned long getSpeed() {return _speed;}
     inline unsigned short getCourse() {return _course;}
-    inline unsigned long timeAge() {return _last_time_fix;}
-    inline unsigned long positionAge() {return _last_position_fix;}
+    inline unsigned long timeAge() {return millis() - _last_time_fix;}
+    inline unsigned long positionAge() {return millis() - _last_position_fix;}
     inline unsigned char getNSatsVisible() {return _numsats_visible;}
     inline unsigned long getSNR() {return _snr_avg;}
-    inline unsigned char getNSNR() {return _snr_count;}
 
 private:
 
