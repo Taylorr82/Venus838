@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+# accuracy.py
+# This python script reads data from the serial port and analyzes
+# it for patterns that would allow for prediction of position
+# accuracy based on DOP and SNR
+
 import math
 from sklearn import linear_model
 from geopy.distance import vincenty
@@ -48,7 +53,7 @@ telemetry = []
 raw_input("Preparing to collect training data and expected outputs, please ensure the antenna is stationary.\nPress enter to continue ... ")
 print ""
 
-#wait until there is valid position data
+# wait until there is valid position data
 while True:
     msg = ser.readline().strip().split(',')
     if msg[0] != "999999999.999999999":
@@ -56,7 +61,8 @@ while True:
 
 new_mean = lambda old_mean, new_value, total: old_mean + (float(new_value) - old_mean) / total
 
-def dist(lat1, lon1, lat2, lon2): #get horizontal and vertical distance between spherical coordinates
+# get horizontal and vertical distance between spherical coordinates
+def dist(lat1, lon1, lat2, lon2):
     dLon = lon2 * math.pi / 180 - lon1 * math.pi/180
     y = math.sin(dLon) * math.cos(lat2)
     x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dLon)
@@ -136,7 +142,7 @@ except KeyboardInterrupt:
     else:
         sys.exit()
 
-print "\n"
+# write telemetry to logfile
 f = open('logs/log' + time.strftime('%Y%m%d_%H%M%S') + '.csv', 'a')
 f.write("PDOP,HDOP,VDOP,SNR,PDOP/SNR,HDOP/SNR,VDOP/SNR,3DError,2DError,VARLAT,VARLON,VARALT,N\n")
 for line in telemetry:
@@ -145,10 +151,11 @@ for line in telemetry:
     f.write('\n')
 f.close()
 
+# generate and print statistics for linear regression
 explanatorynames = ["PDOP", "HDOP", "VDOP", "SNR", "PDOP^2", "HDOP^2", "VDOP^2", "PDOP*HDOP*VDOP", "PDOP^2/SNR", "HDOP^2/SNR", "VDOP^2/SNR", "PDOP/SNR", "HDOP/SNR", "VDOP/SNR", "(PDOP/SNR)^2", "(HDOP/SNR)^2", "(VDOP/SNR)^2"]
-
 clf = linear_model.LinearRegression()
 clf.fit(explanatory, response)
+print "\n"
 print "3D Error ~ " + '{:.3f}'.format(clf.intercept_) + "".join(["{0} {1:.3f}*{2}".format(" -" if clf.coef_[i] < 0 else " +", clf.coef_[i] *(-1 if clf.coef_[i] < 0 else 1), explanatorynames[i]) for i in xrange(len(clf.coef_))])
 print "r^2 = ", clf.score(explanatory, response)
 print "Average position error = ", sum(response) / len(response)

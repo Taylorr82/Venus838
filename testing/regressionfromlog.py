@@ -1,5 +1,9 @@
 #!/usr/bin/python
 
+# regressionfromlog.py
+# This python script allows for regression of data stored
+# in logfiles generated in the same format that accuracy.py generates
+
 import pandas as pd
 from sklearn import linear_model
 
