@@ -37,7 +37,7 @@ void loop()
     while (gps.available())
     {
         c = gps.read();
-        newdata = parser.encode(c);
+        newdata = parser.encode(c); // pass character to parser, which reads characters until a newline, then decodes a full line/sentence
     }
     if (newdata)
     {
