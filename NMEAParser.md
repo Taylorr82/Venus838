@@ -254,7 +254,7 @@ The returned <code>long</code> is equal to 100 times the number represented by t
 
 Similar to <code>\_parse_decimal(char \*p)</code>, this method parses a string of numbers.
 However, it expects a numeric string encoded as ddmm.mm (or dddmm.mm), where d is degrees, and m is minutes (1/60 of a degree).<br>
-The returned <code>long</code> is equal to the ***decimal*** form (ie. dd.dd), in millionths of a degree.
+The returned <code>long</code> is equal to the ***decimal*** form (ie. dd.dd), in ten millionths of a degree.
 
 #### bool \_log_sentence();
 
@@ -273,7 +273,7 @@ If you wish to access these variables, you should add a "get" method in NMEAPars
 ```c++
 inline [variabletype] get[descriptionofvariable]() {return [variablename];}
 ```
-Replace <code>[variabletype]</code> with the type that [variablename] was declared with. <code>[descriptionofvariable]</code> should be replaced with a short, meaningful explanation of what the get function retrieves (e.g. for accessing the private <code>\_altitude</code> variable, the method getAltitude() is provided).<br>
+Replace <code>[variabletype]</code> with the type that [variablename] was declared with and replace [variablename] with the private variable name that this accessor method is for. <code>[descriptionofvariable]</code> should be replaced with a short, meaningful explanation of what the get function retrieves (e.g. for accessing the private <code>\_altitude</code> variable, the method getAltitude() is provided).<br>
 In addition to variables for each sentence, some functionality must be added to parse the new sentence type.<br>
 In each of the three sections of <code>\_log_sentence</code>, there is space indicated by a comment <code>// Add [section functionality] for additional NMEA sentences here</code>.<br>
 

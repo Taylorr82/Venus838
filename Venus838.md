@@ -110,7 +110,7 @@ Debug method, wrapper for <code>Serial.println</code>.
 
 ## Extending Venus838
 
-Additional information on the configuration of the GPS receiver can be found [here](https://cdn.sparkfun.com/datasheets/Sensors/GPS/Venus/638/doc/AN0003_v1.4.19.pdf)
+Additional information on the configuration of the GPS receiver can be found [here](doc/gpscommands.md)(md) and [here](https://cdn.sparkfun.com/datasheets/Sensors/GPS/Venus/638/doc/AN0003_v1.4.19.pdf)(pdf)
 
 ### Adding Configuration Methods
 
