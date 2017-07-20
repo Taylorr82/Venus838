@@ -4,8 +4,6 @@
 #include <NMEAParser.hpp>
 #include <Venus838.hpp>
 
-#define GPS_DEBUG_BAUDRATE 9600
-
 NMEAParser parser;
 Venus838 gps(Serial1, 115200, false);
 
@@ -27,11 +25,12 @@ void setup()
     gps.cfgNMEA(NMEA_GSV, true, 0);
     gps.cfgNMEA(NMEA_RMC, true, 0);
     gps.setUpdateRate(20, 0);
-    Serial.begin(9600);
+    Serial.begin(115200);
 }
 
 void loop()
 {
+
     bool newdata = false;
     char c;
     while (gps.available())
@@ -42,6 +41,7 @@ void loop()
     }
     if (newdata)
     {
+        long utc = parser.getTime();
         long latitude_u, latitude_l;
         parser.getLatitude(&latitude_u, &latitude_l);
         long longitude_u, longitude_l;
@@ -50,10 +50,11 @@ void loop()
         short pdop = parser.getPDOP();
         short hdop = parser.getHDOP();
         short vdop = parser.getVDOP();
-        char numsats = parser.getNSats();
-        char numsatsvisible = parser.getNSatsVisible();
         long snravg = parser.getSNR();
-        char nsnr = parser.getNSNR();
-        Serial.printf("%d.%07d,%d.%07d,%d,%d,%d,%d,%d,%d,%d,%d\n", latitude_u, latitude_l, longitude_u, longitude_l, altitude, pdop, hdop, vdop, numsats, numsatsvisible, snravg, nsnr);
+        if (utc > lastutc && utc != NMEAParser::GPS_INVALID_TIME && snravg != NMEAParser::GPS_INVALID_SNR)
+        {
+            Serial.printf("%d.%07d, %d.%07d, %d.%d,   %d.%d, %d.%d, %d.%d,   %d.%d\n", latitude_u, latitude_l, longitude_u, longitude_l, (long)(altitude / 100), (altitude < 0 ? -1 : 1) * altitude % 100, (long)(pdop / 100), pdop % 100, (long)(hdop / 100), hdop % 100, (long)(vdop / 100), vdop % 100,  (long)(snravg / 100), snravg % 100);
+            lastutc = utc;
+        }
     }
 }
