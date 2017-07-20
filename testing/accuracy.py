@@ -2,7 +2,6 @@
 
 import math
 from sklearn import linear_model
-from sklearn.preprocessing import PolynomialFeatures
 from geopy.distance import vincenty
 
 import serial
@@ -57,7 +56,7 @@ while True:
 
 new_mean = lambda old_mean, new_value, total: old_mean + (float(new_value) - old_mean) / total
 
-def dist(lat1, lon1, lat2, lon2):
+def dist(lat1, lon1, lat2, lon2): #get horizontal and vertical distance between spherical coordinates
     dLon = lon2 * math.pi / 180 - lon1 * math.pi/180
     y = math.sin(dLon) * math.cos(lat2)
     x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dLon)
@@ -72,15 +71,9 @@ def dist(lat1, lon1, lat2, lon2):
 try:
     for i in xrange(samples):
 
-        pvar_lat = 0
-        mean_lat = 0
-        mean_lat_prev = 0
-        pvar_lon = 0
-        mean_lon = 0
-        mean_lon_prev = 0
-        pvar_alt = 0
-        mean_alt = 0
-        mean_alt_prev = 0
+        pvar_lat = mean_lat = mean_lat_prev = 0
+        pvar_lon = mean_lon = mean_lon_prev = 0
+        pvar_alt = mean_alt = mean_alt_prev = 0
 
         mean_pdop = 0
         mean_hdop = 0
@@ -145,7 +138,7 @@ except KeyboardInterrupt:
 
 print "\n"
 f = open('logs/log' + time.strftime('%Y%m%d_%H%M%S') + '.csv', 'a')
-f.write("PDOP,HDOP,VDOP,SNR,PDOP/SNR,HDOP/SNR,VDOP/SNR,3D Error,2D Error,VAR LAT,VAR LON,VAR ALT, N\n")
+f.write("PDOP,HDOP,VDOP,SNR,PDOP/SNR,HDOP/SNR,VDOP/SNR,3DError,2DError,VARLAT,VARLON,VARALT,N\n")
 for line in telemetry:
     for item in line:
         f.write(str(item) + ",")
