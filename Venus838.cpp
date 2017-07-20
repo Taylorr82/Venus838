@@ -19,20 +19,14 @@ Venus838::Venus838(HardwareSerial &gpsSerial, int baudrate, bool reset)
     #endif
 
     _gpsSerial = gpsSerial;
-    if (baudrate == GPS_DEFAULT_BAUDRATE)
+    int currentbaudrate = _getBaudRate();
+    _gpsSerial.begin(currentbaudrate);
+    if (reset)
     {
-        _gpsSerial.begin(baudrate);
+        resetReceiver(true);
     }
-    else
-    {
-        int currentbaudrate = _getBaudRate();
-        _gpsSerial.begin(currentbaudrate);
-        if (reset)
-        {
-            resetReceiver(true);
-        }
-        setBaudRate(baudrate, 0);
-    }
+    delay(100);
+    setBaudRate(baudrate, 0);
     _nmeastate = 0b1111111; // enable all nmea messages;
 }
 
