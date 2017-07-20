@@ -1,21 +1,30 @@
+#!/usr/bin/python
+
 import math
 from sklearn import linear_model
-import numpy as np
-from pandas.plotting import scatter_matrix
-import pandas as pd
+from sklearn.preprocessing import PolynomialFeatures
+from geopy.distance import vincenty
+
 import serial
 import glob
 from os import listdir
 import sys
+import time
 
-baudrate = 9600
-sample_size = 50
-samples = 100
+animation = "|/-\\"
 
+baudrate = 115200
+sample_size = 20
+samples = 5
+if len(sys.argv) == 3:
+    sample_size = int(sys.argv[1])
+    samples = int(sys.argv[2])
+
+# Verify that Teensy is plugged in
 try:
     devices = [device for device in listdir("/dev/serial/by-id")]
 except OSError:
-    print "No serial devices are connected, please plug in the teensy"
+    print "No serpial devices are connected, please plug in the teensy"
     sys.exit()
 
 teensycount = sum(["Teensy" in device for device in devices])
@@ -27,105 +36,126 @@ elif teensycount < 1:
     print "No teensys detected, please plug in the teensy"
     sys.exit()
 
+# Open serial port
 ports = [device for device in glob.glob("/dev/tty[A-Z]*")]
-
 port = "".join([mask * name for mask, name in zip(["Teensy" in device for device in devices], ports)])
-
 ser = serial.Serial(port, baudrate)
 
 # Telemetry will be stored in an array
-training_data = []
-expected_outputs = []
+explanatory = []
+response = []
+telemetry = []
 
 raw_input("Preparing to collect training data and expected outputs, please ensure the antenna is stationary.\nPress enter to continue ... ")
+print ""
 
+#wait until there is valid position data
 while True:
     msg = ser.readline().strip().split(',')
-    if msg[0] != "999999999.999999999": #wait until there is valid position data
+    if msg[0] != "999999999.999999999":
         break
 
 new_mean = lambda old_mean, new_value, total: old_mean + (float(new_value) - old_mean) / total
 
-for i in xrange(samples):
+def dist(lat1, lon1, lat2, lon2):
+    dLon = lon2 * math.pi / 180 - lon1 * math.pi/180
+    y = math.sin(dLon) * math.cos(lat2)
+    x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dLon)
+    brng = math.atan2(y, x)
+    if brng < 0:
+        brng += 2 * math.pi
+    dist = vincenty((lat1, lon1), (lat2, lon2)).meters
+    dx = dist * math.sin(brng)
+    dy = dist * math.cos(brng)
+    return dx, dy
 
-    pvar_lat = 0
-    mean_lat = 0
-    pvar_lon = 0
-    mean_lon = 0
-    pvar_alt = 0
-    mean_alt = 0
+try:
+    for i in xrange(samples):
 
-    mean_pdop = 0
-    mean_hdop = 0
-    mean_vdop = 0
-    mean_numsats = 0
-    mean_numsatsvisible = 0
-    mean_snr = 0
-    mean_nsnr = 0
+        pvar_lat = 0
+        mean_lat = 0
+        mean_lat_prev = 0
+        pvar_lon = 0
+        mean_lon = 0
+        mean_lon_prev = 0
+        pvar_alt = 0
+        mean_alt = 0
+        mean_alt_prev = 0
 
-    for n in xrange(1, sample_size + 1):
-        sys.stdout.write('\rExperiment {0} Progress: {1}% [{2}]'.format(i + 1, n * 100 / sample_size, '=' * (n * 50 / sample_size)))
-        sys.stdout.flush()
-        msg = ser.readline().strip().split(',')
-        mean_pdop = new_mean(mean_pdop, float(msg[3]) / 100.0, n)
-        mean_hdop = new_mean(mean_hdop, float(msg[4]) / 100.0, n)
-        mean_vdop = new_mean(mean_vdop, float(msg[5]) / 100.0, n)
-        mean_numsats = new_mean(mean_numsats, msg[6], n)
-        mean_numsatsvisible = new_mean(mean_numsatsvisible, msg[7], n)
-        mean_snr = new_mean(mean_snr, msg[8], n)
-        mean_nsnr = new_mean(mean_nsnr, msg[9], n)
+        mean_pdop = 0
+        mean_hdop = 0
+        mean_vdop = 0
+        mean_snr = 0
 
-        lat = float(msg[0])
-        lon = float(msg[1])
-        alt = float(msg[2]) / 100.0
-        mean_lat_prev = mean_lat
-        mean_lon_prev = mean_lon
-        mean_alt_prev = mean_alt
+        for n in xrange(0, sample_size + 1):
 
-        mean_lat = new_mean(mean_lat, lat, n)
-        mean_lon = new_mean(mean_lon, lon, n)
-        mean_alt = new_mean(mean_alt, alt, n)
-        pvar_lat = pvar_alt + (lat - mean_lat) * (lat - mean_lat_prev)
-        pvar_lon = pvar_lon + (lon - mean_lon) * (lon - mean_lon_prev)
-        pvar_alt = pvar_alt + (alt - mean_alt) * (alt - mean_alt_prev)
+            msg = ser.readline().strip().split(',')
 
-    training_data.append([mean_pdop, mean_hdop, mean_vdop, mean_numsats, mean_numsatsvisible, mean_snr, mean_nsnr, mean_pdop / mean_snr, mean_hdop / mean_snr, mean_vdop / mean_snr])
-    expected_outputs.append(1.122 * (math.sqrt(pvar_lat / sample_size) + math.sqrt(pvar_lon / sample_size) + math.sqrt(pvar_alt / sample_size)))
+            if n == 0:
+                mean_lat = float(msg[0])
+                mean_lon = float(msg[1])
+                mean_alt = float(msg[2])
+            elif n > 0:
+                mean_pdop = new_mean(mean_pdop, float(msg[3]), n)
+                mean_hdop = new_mean(mean_hdop, float(msg[4]), n)
+                mean_vdop = new_mean(mean_vdop, float(msg[5]), n)
+                mean_snr = new_mean(mean_snr, float(msg[6]), n)
 
-    raw_input("\nExperiment {0} Complete; please move to a new location.\nPress Enter to begin a new experiment.".format(i + 1))
+                lat = float(msg[0])
+                lon = float(msg[1])
+                alt = float(msg[2])
+                mean_lat_prev = mean_lat
+                mean_lon_prev = mean_lon
+                mean_alt_prev = mean_alt
+
+                mean_lat = new_mean(mean_lat, lat, n)
+                mean_lon = new_mean(mean_lon, lon, n)
+                mean_alt = new_mean(mean_alt, alt, n)
+                d1x, d1y = dist(lat, lon, mean_lat, mean_lon)
+                d2x, d2y = dist(lat, lon, mean_lat_prev, mean_lon_prev)
+                pvar_lat = pvar_lat + d1x * d2x
+                pvar_lon = pvar_lon + d1y * d2y
+                pvar_alt = pvar_alt + (alt - mean_alt) * (alt - mean_alt_prev)
+
+                # Update status
+                percentcplt = (i * sample_size + n) * 10000 / (samples * sample_size)
+                sys.stdout.write('\033[FProgress: {0}.{1:0>2}% [{2}]\r\nMessage:{3}'.format(percentcplt / 100, percentcplt % 100, animation[n % 4], ','.join(msg)))
+                sys.stdout.flush()
+
+        var_lat = pvar_lat / sample_size
+        var_lon = pvar_lon / sample_size
+        var_alt = pvar_alt / sample_size
+
+        poserr3d = 1.122 * (math.sqrt(var_lat) + math.sqrt(var_lon) + math.sqrt(var_alt))
+        poserrhoriz = 2 * math.sqrt(var_lat + var_lon)
+        telemetry.append([mean_pdop, mean_hdop, mean_vdop, mean_snr, mean_pdop / mean_snr, mean_hdop / mean_snr, mean_vdop / mean_snr, poserr3d, poserrhoriz, var_lat, var_lon, var_alt, sample_size])
+        p = mean_pdop
+        h = mean_hdop
+        v = mean_vdop
+        s = mean_snr
+        explanatory.append([p, h, v, s, p**2, h**2, v**2, p*h*v, p*p/s, h*h/s, v*v/s, p/s, h/s, v/s, (p/s)**2, (h/s)**2, (v/s)**2])
+        response.append(poserr3d)
+
+except KeyboardInterrupt:
+    response = raw_input("\n\nKeyboard Interrupt detected, write collected data to logfile? (y/n) ")
+    if response == 'y' or response == 'Y' or response == "yes":
+        pass
+    else:
+        sys.exit()
+
+print "\n"
+f = open('logs/log' + time.strftime('%Y%m%d_%H%M%S') + '.csv', 'a')
+f.write("PDOP,HDOP,VDOP,SNR,PDOP/SNR,HDOP/SNR,VDOP/SNR,3D Error,2D Error,VAR LAT,VAR LON,VAR ALT, N\n")
+for line in telemetry:
+    for item in line:
+        f.write(str(item) + ",")
+    f.write('\n')
+f.close()
+
+explanatorynames = ["PDOP", "HDOP", "VDOP", "SNR", "PDOP^2", "HDOP^2", "VDOP^2", "PDOP*HDOP*VDOP", "PDOP^2/SNR", "HDOP^2/SNR", "VDOP^2/SNR", "PDOP/SNR", "HDOP/SNR", "VDOP/SNR", "(PDOP/SNR)^2", "(HDOP/SNR)^2", "(VDOP/SNR)^2"]
 
 clf = linear_model.LinearRegression()
-x_ = np.array(training_data)
-y_ = np.array(expected_outputs)
-clf.fit(x_, y_)
-print ""
-print "r^2 =", clf.score(x_,y_)
-error_str = str(clf.intercept_) + " + " + str(clf.coef_[0]) + "*pdop + " + str(clf.coef_[1]) + "*hdop + " + str(clf.coef_[2]) + "*vdop + "
-error_str += str(clf.coef_[3]) + "*nsats + " + str(clf.coef_[4]) + "*nsatsvis + " + str(clf.coef_[5]) + "*snr + " + str(clf.coef_[6]) + "*nsnrsats + "
-error_str += str(clf.coef_[7]) + "*pdop/snr + " + str(clf.coef_[8]) + "*hdop/snr + " + str(clf.coef_[9]) + "*vdop/snr"
-print "position error ~ " + error_str
-print "mean squared residual error = " + str(np.mean((clf.predict(training_data) - expected_outputs) ** 2))
-
-
-#print "Training Data:", training_data
-#print "Expected Outputs:", expected_outputs
-
-print "Average of Expected Outputs:", sum(expected_outputs)/len(expected_outputs)
-
-
-'''
-Best Model so far (probably is only accurate in the same location on the stairs)
-r^2 = 0.844873462104
-position error ~ 108.563753131 + -4.51047055041*pdop + 9.16937525521*hdop + 9.78784105119*vdop + 9.4089397195*nsats + 6.39488
-462184e-14*nsatsvis + -0.0524476990033*snr + -17.3488873339*nsnrsats
-mean squared error = 1.07971906724
-Average of Expected Outputs: 1.72019234181
-
-another model (poor accuracy)
-r^2 = 1.0
-position error ~ -8116.8042914 + -383.250083143*pdop + -3121.80865776*hdop + 379.392802833*vdop + -497.791074802*nsats + -1.2
-2271894725e-05*nsatsvis + 3.26136477417*snr + -212.207171387*nsnrsats + 1761963.90775*pdop/snr + 9455269.83931*hdop/snr + -12
-77396.54818*vdop/snr
-mean squared residual error = 7.43505608246e-20
-Average of Expected Outputs: 321.023412359
-'''
+clf.fit(explanatory, response)
+print "3D Error ~ " + '{:.3f}'.format(clf.intercept_) + "".join(["{0} {1:.3f}*{2}".format(" -" if clf.coef_[i] < 0 else " +", clf.coef_[i] *(-1 if clf.coef_[i] < 0 else 1), explanatorynames[i]) for i in xrange(len(clf.coef_))])
+print "r^2 = ", clf.score(explanatory, response)
+print "Average position error = ", sum(response) / len(response)
