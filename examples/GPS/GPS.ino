@@ -5,7 +5,7 @@
 #include <Venus838.hpp>
 
 NMEAParser parser;
-Venus838 gps(Serial1, 19200, false);
+Venus838 gps(Serial1, 19200, false); // uncomment the #define for GPS_DEBUG_BAUDRATE in Venus838.hpp for verbose output
 
 String errorcodes[5] = {"NORMAL", "NACK", "TIMEOUT", "INVALIDARG", "UNKNOWN"};
 
