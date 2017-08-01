@@ -181,8 +181,8 @@ The parsing library parses NMEA data one sentence at a time. It identifies the t
 
 #### bool encode(char c);
 
-The encode method is the library's primary method for parsing NMEA data. It records chars until it reaches a newline ('\\n') character, in which case it verifies the sentence's checksum and calls <code>\_log_sentence</code>.<br>
-<code>c</code> is a character read directly from the serial port<br>
+The encode method is the library's primary method for parsing NMEA data. It records chars until it reaches a newline ('\\n') character, in which case it verifies the sentence's checksum and calls `\_log_sentence`.<br>
+`c` is a character read directly from the serial port<br>
 
 Sample code
 ```c++
@@ -241,26 +241,26 @@ A copy of <string.h>'s strcmp.
 
 #### int \_hexToInt(char hex);
 
-Converts hex-formatted <code>hex</code> to an integer.
+Converts hex-formatted `hex` to an integer.
 
 #### long \_parse_decimal(char \*p);
 
 Parses a decimal string (with an optional decimal point) into a signed long.<br>
-<code>p</code> is a pointer to the start of the decimal string.<br>
-The returned <code>long</code> is equal to 100 times the number represented by the string, i.e.<br>
-<code>\_parse_decimal("102.136");</code> would return 10213 (note that digits past the 100ths place are truncated).
+`p` is a pointer to the start of the decimal string.<br>
+The returned `long` is equal to 100 times the number represented by the string, i.e.<br>
+`\_parse_decimal("102.136");` would return 10213 (note that digits past the 100ths place are truncated).
 
 #### long \_parse_degrees(char \*p);
 
-Similar to <code>\_parse_decimal(char \*p)</code>, this method parses a string of numbers.
+Similar to `\_parse_decimal(char \*p)`, this method parses a string of numbers.
 However, it expects a numeric string encoded as ddmm.mm (or dddmm.mm), where d is degrees, and m is minutes (1/60 of a degree).<br>
-The returned <code>long</code> is equal to the ***decimal*** form (ie. dd.dd), in ten millionths of a degree.
+The returned `long` is equal to the ***decimal*** form (ie. dd.dd), in ten millionths of a degree.
 
 #### bool \_log_sentence();
 
-This method is used by <code>encode</code> to parse full sentences. It is called each time <code>encode</code> receives a newline character ('\\n').<br>
-First, <code>\_log_sentence</code> records the time it was called (using <code>millis()</code>). This time is used for NMEA strings which report position or time to allow the user to determine the age of such measurements when requesting them.<br>
-Next, the type of sentence is determined (<code>NMEA_GGA</code>, <code>NMEA_GSA</code>, <code>NMEA_GSV</code>, etc.). If the type is unknown, then <code>\_log_sentence</code> will exit early, returning false.<br>
+This method is used by `encode` to parse full sentences. It is called each time `encode` receives a newline character ('\\n').<br>
+First, `\_log_sentence` records the time it was called (using `millis()`). This time is used for NMEA strings which report position or time to allow the user to determine the age of such measurements when requesting them.<br>
+Next, the type of sentence is determined (`NMEA_GGA`, `NMEA_GSA`, `NMEA_GSV`, etc.). If the type is unknown, then `\_log_sentence` will exit early, returning false.<br>
 The validity of each sentence is then verified (if possible; some sentences do not have validity or quality fields). If the validity test fails, then the method exits early and returns false.<br>
 Finally, the data in the sentence is decoded and recorded in each sentence type's private variables.
 
@@ -273,16 +273,16 @@ If you wish to access these variables, you should add a "get" method in NMEAPars
 ```c++
 inline [variabletype] get[descriptionofvariable]() {return [variablename];}
 ```
-Replace <code>[variabletype]</code> with the type that [variablename] was declared with and replace [variablename] with the private variable name that this accessor method is for. <code>[descriptionofvariable]</code> should be replaced with a short, meaningful explanation of what the get function retrieves (e.g. for accessing the private <code>\_altitude</code> variable, the method getAltitude() is provided).<br>
+Replace `[variabletype]` with the type that [variablename] was declared with and replace [variablename] with the private variable name that this accessor method is for. `[descriptionofvariable]` should be replaced with a short, meaningful explanation of what the get function retrieves (e.g. for accessing the private `\_altitude` variable, the method getAltitude() is provided).<br>
 In addition to variables for each sentence, some functionality must be added to parse the new sentence type.<br>
-In each of the three sections of <code>\_log_sentence</code>, there is space indicated by a comment <code>// Add [section functionality] for additional NMEA sentences here</code>.<br>
+In each of the three sections of `\_log_sentence`, there is space indicated by a comment `// Add [section functionality] for additional NMEA sentences here`.<br>
 
 For the first section (identification of sentence type), simply add the following code:
 ```c++
 else if (!\_termcmp(title, \_GP<ID>\_TERM))
     sentence_type = NMEA_[ID];
 ```
-Replace <code>[ID]</code> with the name of the NMEA sentence you wish to add functionality for.
+Replace `[ID]` with the name of the NMEA sentence you wish to add functionality for.
 
 For the second section (verification of sentence validity), add this:
 ```c++
@@ -290,7 +290,7 @@ case NMEA_[ID]:
     // verification code
     break;
 ```
-Replace <code>[ID]</code> with the name of the NMEA sentence you wish to add functionality for, and add code to verify validity. If the sentence has no validity indicator like GSV or ZDA, set <code>data_valid</code> to true.
+Replace `[ID]` with the name of the NMEA sentence you wish to add functionality for, and add code to verify validity. If the sentence has no validity indicator like GSV or ZDA, set `data_valid` to true.
 
 For the third section (parsing/decoding of sentence data), add the following:
 ```c++
@@ -306,8 +306,8 @@ case NMEA_[ID]:
     }
     break;
 ```
-Replace <code>[ID]</code> with the name of the NMEA sentence you wish to decode.<br>
-<code>p</code> points to the starting character of the term currently being decoded.
-Take, for example, the sentence <code>$GPGSA,A,3,01,13,28,07,11,17,15,30,,,,,2.0,1.2,1.6*3B</code>.
-Entering the <code>switch (term_number)</code> statement, with <code>term_number</code> equal to 0 (i.e. the first term after the sentence title), <code>\*p</code> would be equal to 'A'.<br>
-Entering the switch statement with <code>term_number</code> equal to 1, <code>\*p</code> would be equal to '3'.<br>
+Replace `[ID]` with the name of the NMEA sentence you wish to decode.<br>
+`p` points to the starting character of the term currently being decoded.
+Take, for example, the sentence `$GPGSA,A,3,01,13,28,07,11,17,15,30,,,,,2.0,1.2,1.6*3B`.
+Entering the `switch (term_number)` statement, with `term_number` equal to 0 (i.e. the first term after the sentence title), `\*p` would be equal to 'A'.<br>
+Entering the switch statement with `term_number` equal to 1, `\*p` would be equal to '3'.<br>
