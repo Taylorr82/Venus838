@@ -67,13 +67,13 @@ Configure the function of the 1PPS (pulse-per-second) pin.<br>
 
 #### bool available();
 
-Wrapper method for private `\_gpsSerial` object.<br>
-Returns `\_gpsSerial.available();`
+Wrapper method for private `_gpsSerial` object.<br>
+Returns `_gpsSerial.available();`
 
 #### char read();
 
-Wrapper method for private `\_gpsSerial` object.<br>
-Returns `\_gpsSerial.read();`
+Wrapper method for private `_gpsSerial` object.<br>
+Returns `_gpsSerial.read();`
 
 
 ## Private Methods
@@ -86,15 +86,15 @@ Returns the integer baud rate of the GPS receiver.
 #### char \_sendCommand(char messageid, char \*messagebody, int bodylen);
 
 Send command with the default timeout.<br>
-See `\_sendCommand(char messageid, char \*messagebody, int bodylen, uint timemout)` for more information on the `\_sendCommand` method.
+See `_sendCommand(char messageid, char *messagebody, int bodylen, uint timemout)` for more information on the `_sendCommand` method.
 
 #### char \_sendCommand(char messageid, char \*messagebody, int bodylen, uint timemout);
 
-Assembles a command packet, sends it (using `\_sendPacket`), returns result from `\_sendPacket`.<br>
+Assembles a command packet, sends it (using `_sendPacket`), returns result from `_sendPacket`.<br>
 
 #### char \_sendPacket(char \*packet, int size, uint timeout);
 
-Writes packet to `\_gpsSerial` and waits for a response or timeout.
+Writes packet to `_gpsSerial` and waits for a response or timeout.
 
 #### void \_printPacket(char \*packet, int size);
 
@@ -114,10 +114,10 @@ Additional information on the configuration of the GPS receiver can be found [he
 
 ### Adding Configuration Methods
 
-Each configuration method follows a similar structure, it prints a statement (using `\_debug`) that indicates it has been called.<br>
+Each configuration method follows a similar structure, it prints a statement (using `_debug`) that indicates it has been called.<br>
 Next, an array is allocated for storing the body of the message.<br>
 `messagebody` is then filled with command data specific to the command.<br>
-Finally, the command is actually sent using `\_sendCommand`.
+Finally, the command is actually sent using `_sendCommand`.
 ```c++
 char messagebody[sizeofmessage];
 memset(messagebody, 0, sizeofmessage);
